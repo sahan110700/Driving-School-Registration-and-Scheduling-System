@@ -1,0 +1,3 @@
+U001,admin,admin@gmail.com,1234
+U002,nimal,nimal@gmail.com,1111
+U003,saman,saman@gmail.com,2222
