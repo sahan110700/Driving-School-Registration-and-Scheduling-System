@@ -10,7 +10,6 @@ import java.nio.file.StandardOpenOption;
 
 public class UserDAO {
 
-    // FIX: Use the absolute path to your project's data folder
     private static final String PROJECT_ROOT = "C:/Users/DELL/OneDrive/Desktop/DrivingSchoolSystem-main";
     private static final String FILE_PATH = PROJECT_ROOT + "/data/users.txt";
 
@@ -45,8 +44,6 @@ public class UserDAO {
                     String storedUsername = data[1].trim();
                     String storedPassword = data[3].trim();
                     String storedRole = (data.length >= 5) ? data[4].trim() : "student";
-
-                    System.out.println("[UserDAO] Comparing -> input: [" + username + "/" + password + "] stored: [" + storedUsername + "/" + storedPassword + "]");
 
                     if (storedUsername.equals(username) && storedPassword.equals(password)) {
                         System.out.println("[UserDAO] Login SUCCESS for: " + username + " role: " + storedRole);
@@ -99,9 +96,13 @@ public class UserDAO {
             String userId = generateNextUserId();
             String record = userId + "," + username + "," + email + "," + password + ",student";
 
-            try (BufferedWriter writer = Files.newBufferedWriter(path, StandardOpenOption.APPEND)) {
+            // FIX: use \r\n for Windows to ensure each user goes on a new line
+            try (BufferedWriter writer = Files.newBufferedWriter(
+                    path,
+                    StandardOpenOption.APPEND,
+                    StandardOpenOption.CREATE)) {
                 writer.write(record);
-                writer.newLine();
+                writer.write("\r\n");
             }
             return true;
 
