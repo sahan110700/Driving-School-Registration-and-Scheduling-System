@@ -29,8 +29,16 @@ public class HomeServlet extends HttpServlet {
             welcomeLine = "<div class='welcome'>Welcome! Please login to access all features</div>";
         }
 
-        String cards;
+        // FIX: Get role from session to show correct cards
+        String role = "";
         if (loggedIn) {
+            Object roleObj = req.getSession(false).getAttribute("userRole");
+            role = (roleObj != null) ? roleObj.toString() : "student";
+        }
+
+        String cards;
+        if (loggedIn && "admin".equalsIgnoreCase(role)) {
+            // ADMIN sees all management cards
             cards =
                     "<div class='cards-grid'>" +
 
@@ -80,6 +88,44 @@ public class HomeServlet extends HttpServlet {
                             "<p>Schedule driving tests, record results, and track student progress.</p>" +
                             "<div class='card-stats'><span class='stat-badge'>Upcoming Tests</span></div>" +
                             "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/tests'>Access Portal <i class='fas fa-arrow-right'></i></a></div>" +
+                            "</div>" +
+
+                            "<div class='card logout-card'>" +
+                            "<div class='card-icon'><i class='fas fa-sign-out-alt'></i></div>" +
+                            "<h3>Logout</h3>" +
+                            "<p>End your session securely and return to the login page.</p>" +
+                            "<div class='btn-row'><a class='btn danger' href='" + req.getContextPath() + "/logout'>Logout <i class='fas fa-sign-out-alt'></i></a></div>" +
+                            "</div>" +
+
+                            "</div>";
+
+        } else if (loggedIn) {
+            // STUDENT sees only their own relevant cards: lessons, tests, payments, logout
+            cards =
+                    "<div class='cards-grid'>" +
+
+                            "<div class='card lesson-card'>" +
+                            "<div class='card-icon'><i class='fas fa-calendar-check'></i></div>" +
+                            "<h3>My Lessons</h3>" +
+                            "<p>View your upcoming and past driving lessons.</p>" +
+                            "<div class='card-stats'><span class='stat-badge'>Upcoming Lessons</span></div>" +
+                            "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/lessons'>View Lessons <i class='fas fa-arrow-right'></i></a></div>" +
+                            "</div>" +
+
+                            "<div class='card test-card'>" +
+                            "<div class='card-icon'><i class='fas fa-clipboard-list'></i></div>" +
+                            "<h3>My Tests</h3>" +
+                            "<p>Check your driving test schedule and results.</p>" +
+                            "<div class='card-stats'><span class='stat-badge'>Upcoming Tests</span></div>" +
+                            "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/tests'>View Tests <i class='fas fa-arrow-right'></i></a></div>" +
+                            "</div>" +
+
+                            "<div class='card payment-card'>" +
+                            "<div class='card-icon'><i class='fas fa-money-bill-wave'></i></div>" +
+                            "<h3>My Payments</h3>" +
+                            "<p>View your payment history and outstanding balances.</p>" +
+                            "<div class='card-stats'><span class='stat-badge'>Payment History</span></div>" +
+                            "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/payments'>View Payments <i class='fas fa-arrow-right'></i></a></div>" +
                             "</div>" +
 
                             "<div class='card logout-card'>" +
@@ -527,27 +573,27 @@ public class HomeServlet extends HttpServlet {
                         "<!-- Stats Section (only for logged in users) -->" +
                         (loggedIn ?
                                 "<div class='stats-section'>" +
-                                        "<div class='stat-card'>" +
-                                        "<i class='fas fa-users'></i>" +
-                                        "<div class='stat-number'>0</div>" +
-                                        "<div class='stat-label'>Total Students</div>" +
-                                        "</div>" +
-                                        "<div class='stat-card'>" +
-                                        "<i class='fas fa-chalkboard-teacher'></i>" +
-                                        "<div class='stat-number'>0</div>" +
-                                        "<div class='stat-label'>Active Instructors</div>" +
-                                        "</div>" +
-                                        "<div class='stat-card'>" +
-                                        "<i class='fas fa-car'></i>" +
-                                        "<div class='stat-number'>0</div>" +
-                                        "<div class='stat-label'>Active Vehicles</div>" +
-                                        "</div>" +
-                                        "<div class='stat-card'>" +
-                                        "<i class='fas fa-calendar-check'></i>" +
-                                        "<div class='stat-number'>0</div>" +
-                                        "<div class='stat-label'>Today's Lessons</div>" +
-                                        "</div>" +
-                                        "</div>" : "") +
+                                "<div class='stat-card'>" +
+                                "<i class='fas fa-users'></i>" +
+                                "<div class='stat-number'>0</div>" +
+                                "<div class='stat-label'>Total Students</div>" +
+                                "</div>" +
+                                "<div class='stat-card'>" +
+                                "<i class='fas fa-chalkboard-teacher'></i>" +
+                                "<div class='stat-number'>0</div>" +
+                                "<div class='stat-label'>Active Instructors</div>" +
+                                "</div>" +
+                                "<div class='stat-card'>" +
+                                "<i class='fas fa-car'></i>" +
+                                "<div class='stat-number'>0</div>" +
+                                "<div class='stat-label'>Active Vehicles</div>" +
+                                "</div>" +
+                                "<div class='stat-card'>" +
+                                "<i class='fas fa-calendar-check'></i>" +
+                                "<div class='stat-number'>0</div>" +
+                                "<div class='stat-label'>Today's Lessons</div>" +
+                                "</div>" +
+                                "</div>" : "") +
                         "" +
                         "<!-- Cards Grid -->" +
                         cards +

@@ -1,3 +1,2 @@
-U001,admin,admin@gmail.com,1234
-U002,nimal,nimal@gmail.com,1111
-U003,saman,saman@gmail.com,2222
+U001,admin,admin@school.com,admin123,admin
+U002,john,john@gmail.com,pass123,studentU003,sahan,sahan@gmail,s@123,student
