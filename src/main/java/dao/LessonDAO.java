@@ -10,7 +10,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class LessonDAO {
-    private final String filePath = "lessons.txt";
+    private static final String filePath = "C:/Users/DELL/OneDrive/Desktop/DrivingSchoolSystem-main/data/lessons.txt";
     private StudentDAO studentDAO = new StudentDAO();
     private InstructorDAO instructorDAO = new InstructorDAO();
     private VehicleDAO vehicleDAO = new VehicleDAO();

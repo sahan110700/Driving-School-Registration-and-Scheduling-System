@@ -1,6 +1,7 @@
 package servlet;
 
 import dao.StudentDAO;
+import dao.UserDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -15,6 +16,7 @@ import java.util.List;
 public class StudentServlet extends HttpServlet {
 
     private final StudentDAO studentDAO = new StudentDAO();
+    private final UserDAO userDAO = new UserDAO();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -60,53 +62,92 @@ public class StudentServlet extends HttpServlet {
 
         req.setCharacterEncoding("UTF-8");
 
-        String action = req.getParameter("action");
-        String name = req.getParameter("name");
-        String nic = req.getParameter("nic");
-        String phone = req.getParameter("phone");
-        String email = req.getParameter("email");
-        String address = req.getParameter("address");
-        String password = req.getParameter("password");
-        String licenseType = req.getParameter("licenseType");
-        String coursePackage = req.getParameter("coursePackage");
+        String action    = req.getParameter("action");
+        String name      = req.getParameter("name");
+        String nic       = req.getParameter("nic");
+        String phone     = req.getParameter("phone");
+        String email     = req.getParameter("email");
+        String address   = req.getParameter("address");
+        String password  = req.getParameter("password");
+        String licenseType      = req.getParameter("licenseType");
+        String coursePackage    = req.getParameter("coursePackage");
         String registrationDate = req.getParameter("registrationDate");
-        String gender = req.getParameter("gender");
-        String ageText = req.getParameter("age");
+        String gender    = req.getParameter("gender");
+        String ageText   = req.getParameter("age");
+        String username  = req.getParameter("username"); // only present on add form
 
-        // Validate required fields
-        if (name.isEmpty() || nic.isEmpty() || phone.isEmpty() || email.isEmpty() ||
-                address.isEmpty() || password.isEmpty() || licenseType.isEmpty() ||
-                coursePackage.isEmpty() || registrationDate.isEmpty() || gender.isEmpty() ||
-                ageText.isEmpty()) {
+        // Validate required fields (common for both add and update)
+        if (isEmpty(name) || isEmpty(nic) || isEmpty(phone) || isEmpty(email) ||
+                isEmpty(address) || isEmpty(licenseType) || isEmpty(coursePackage) ||
+                isEmpty(registrationDate) || isEmpty(gender) || isEmpty(ageText)) {
 
-            String redirect = ("update".equals(action)) ? "/students?action=edit&id=" + req.getParameter("studentId") + "&error=empty"
+            String redirect = "update".equals(action)
+                    ? "/students?action=edit&id=" + req.getParameter("studentId") + "&error=empty"
                     : "/students?action=add-form&error=empty";
             resp.sendRedirect(req.getContextPath() + redirect);
             return;
         }
 
+        // For ADD: also require username and password
+        if ("add".equals(action) && (isEmpty(username) || isEmpty(password))) {
+            resp.sendRedirect(req.getContextPath() + "/students?action=add-form&error=empty");
+            return;
+        }
+
         int age;
-        try { age = Integer.parseInt(ageText); }
-        catch (NumberFormatException e) {
-            String redirect = ("update".equals(action)) ? "/students?action=edit&id=" + req.getParameter("studentId") + "&error=age"
+        try {
+            age = Integer.parseInt(ageText.trim());
+        } catch (NumberFormatException e) {
+            String redirect = "update".equals(action)
+                    ? "/students?action=edit&id=" + req.getParameter("studentId") + "&error=age"
                     : "/students?action=add-form&error=age";
             resp.sendRedirect(req.getContextPath() + redirect);
             return;
         }
 
+        // ── UPDATE ──
         if ("update".equals(action)) {
             String studentId = req.getParameter("studentId");
-            Student student = new Student(studentId, name, nic, phone, email, address, password, licenseType, coursePackage, registrationDate, age, gender);
+            Student existing = studentDAO.getStudentById(studentId);
+
+            // Keep old password if no new one provided
+            String finalPassword = isEmpty(password) ? existing.getPassword() : password.trim();
+
+            Student student = new Student(studentId, name.trim(), nic.trim(), phone.trim(),
+                    email.trim(), address.trim(), finalPassword, licenseType.trim(),
+                    coursePackage.trim(), registrationDate.trim(), age, gender.trim());
+
             boolean success = studentDAO.updateStudent(student);
             resp.sendRedirect(req.getContextPath() + "/students" + (success ? "?success=updated" : "?error=failed"));
             return;
         }
 
+        // ── ADD ──
         if ("add".equals(action)) {
+            // Check username not already taken
+            if (userDAO.usernameExists(username.trim())) {
+                resp.sendRedirect(req.getContextPath() + "/students?action=add-form&error=usernameExists");
+                return;
+            }
+
             String studentId = studentDAO.generateNextStudentId();
-            Student student = new Student(studentId, name, nic, phone, email, address, password, licenseType, coursePackage, registrationDate, age, gender);
-            boolean success = studentDAO.addStudent(student);
-            resp.sendRedirect(req.getContextPath() + "/students" + (success ? "?success=added" : "?action=add-form&error=failed"));
+            Student student = new Student(studentId, name.trim(), nic.trim(), phone.trim(),
+                    email.trim(), address.trim(), password.trim(), licenseType.trim(),
+                    coursePackage.trim(), registrationDate.trim(), age, gender.trim());
+
+            boolean savedStudent = studentDAO.addStudent(student);
+
+            if (savedStudent) {
+                // Also save to users.txt so the student can login
+                userDAO.registerUser(username.trim(), email.trim(), password.trim());
+                resp.sendRedirect(req.getContextPath() + "/students?success=added");
+            } else {
+                resp.sendRedirect(req.getContextPath() + "/students?action=add-form&error=failed");
+            }
         }
+    }
+
+    private boolean isEmpty(String val) {
+        return val == null || val.trim().isEmpty();
     }
 }

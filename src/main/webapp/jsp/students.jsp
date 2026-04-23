@@ -133,6 +133,8 @@
     <div class="message error">Please fill all fields.</div>
     <% } else if ("age".equals(error)) { %>
     <div class="message error">Age must be a valid number.</div>
+    <% } else if ("usernameExists".equals(error)) { %>
+    <div class="message error">Username already exists. Please choose a different username.</div>
     <% } else if ("failed".equals(error)) { %>
     <div class="message error">Action failed. Try again.</div>
     <% } %>

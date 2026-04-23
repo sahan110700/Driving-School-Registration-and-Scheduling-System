@@ -1,5 +1,9 @@
 package servlet;
 
+import dao.StudentDAO;
+import dao.InstructorDAO;
+import dao.VehicleDAO;
+import dao.LessonDAO;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,9 +14,18 @@ import java.io.IOException;
 @WebServlet("/home")
 public class HomeServlet extends HttpServlet {
 
+    private final StudentDAO studentDAO = new StudentDAO();
+    private final InstructorDAO instructorDAO = new InstructorDAO();
+    private final VehicleDAO vehicleDAO = new VehicleDAO();
+    private final LessonDAO lessonDAO = new LessonDAO();
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setContentType("text/html; charset=UTF-8");
+        // Prevent browser caching — stops back-button access after logout
+        resp.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        resp.setHeader("Pragma", "no-cache");
+        resp.setDateHeader("Expires", 0);
 
         boolean loggedIn = req.getSession(false) != null &&
                 req.getSession(false).getAttribute("loggedInUser") != null;
@@ -24,7 +37,12 @@ public class HomeServlet extends HttpServlet {
 
         String welcomeLine;
         if (loggedIn) {
-            welcomeLine = "<div class='welcome'>Welcome back, <strong>" + escape(username) + "</strong></div>";
+            String initial = username.isEmpty() ? "U" : String.valueOf(username.charAt(0)).toUpperCase();
+            welcomeLine = "<div class='welcome-row'>" +
+                    "<div class='user-avatar'>" + escape(initial) + "</div>" +
+                    "<div><div style='font-size:11px;color:#9ca3af;font-weight:500;'>Logged in as</div>" +
+                    "<strong style='color:#667eea;font-size:15px;'>" + escape(username) + "</strong></div>" +
+                    "</div>";
         } else {
             welcomeLine = "<div class='welcome'>Welcome! Please login to access all features</div>";
         }
@@ -90,13 +108,6 @@ public class HomeServlet extends HttpServlet {
                             "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/tests'>Access Portal <i class='fas fa-arrow-right'></i></a></div>" +
                             "</div>" +
 
-                            "<div class='card logout-card'>" +
-                            "<div class='card-icon'><i class='fas fa-sign-out-alt'></i></div>" +
-                            "<h3>Logout</h3>" +
-                            "<p>End your session securely and return to the login page.</p>" +
-                            "<div class='btn-row'><a class='btn danger' href='" + req.getContextPath() + "/logout'>Logout <i class='fas fa-sign-out-alt'></i></a></div>" +
-                            "</div>" +
-
                             "</div>";
 
         } else if (loggedIn) {
@@ -128,32 +139,48 @@ public class HomeServlet extends HttpServlet {
                             "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/payments'>View Payments <i class='fas fa-arrow-right'></i></a></div>" +
                             "</div>" +
 
-                            "<div class='card logout-card'>" +
-                            "<div class='card-icon'><i class='fas fa-sign-out-alt'></i></div>" +
-                            "<h3>Logout</h3>" +
-                            "<p>End your session securely and return to the login page.</p>" +
-                            "<div class='btn-row'><a class='btn danger' href='" + req.getContextPath() + "/logout'>Logout <i class='fas fa-sign-out-alt'></i></a></div>" +
-                            "</div>" +
-
                             "</div>";
         } else {
+            String errorParam = req.getParameter("error");
+            String errorMsg = "";
+            if ("empty".equals(errorParam)) {
+                errorMsg = "<div class=\'login-error\'><i class=\'fas fa-exclamation-circle\'></i> Please enter username and password.</div>";
+            } else if ("invalid".equals(errorParam)) {
+                errorMsg = "<div class=\'login-error\'><i class=\'fas fa-exclamation-circle\'></i> Invalid username or password.</div>";
+            }
+
             cards =
-                    "<div class='cards-grid login-grid'>" +
-
-                            "<div class='card login-card'>" +
-                            "<div class='card-icon'><i class='fas fa-sign-in-alt'></i></div>" +
-                            "<h3>Login to Your Account</h3>" +
-                            "<p>Access your dashboard to manage students, instructors, vehicles, and more.</p>" +
-                            "<div class='btn-row'><a class='btn primary' href='jsp/login.jsp'>Login <i class='fas fa-arrow-right'></i></a></div>" +
+                    "<div class=\'login-hero-wrap\'>" +
+                            "<div class=\'login-features\'>" +
+                            "<div class=\'login-tag\'><i class=\'fas fa-shield-alt\'></i> Secure &amp; Reliable Platform</div>" +
+                            "<h2 class=\'login-headline\'>Your Journey<br><span>Starts Here</span></h2>" +
+                            "<p class=\'login-sub\'>Roadify&#39;s comprehensive management system helps you streamline student registrations, instructor assignments, vehicle tracking, payments, and driving tests — all in one place.</p>" +
+                            "<div class=\'feat-list\'>" +
+                            "<div class=\'feat-item\'><i class=\'fas fa-users\'></i> Student &amp; Instructor Management</div>" +
+                            "<div class=\'feat-item\'><i class=\'fas fa-car\'></i> Vehicle Fleet Tracking</div>" +
+                            "<div class=\'feat-item\'><i class=\'fas fa-calendar-check\'></i> Lesson &amp; Test Scheduling</div>" +
+                            "<div class=\'feat-item\'><i class=\'fas fa-credit-card\'></i> Payment Processing</div>" +
                             "</div>" +
-
-                            "<div class='card register-card'>" +
-                            "<div class='card-icon'><i class='fas fa-user-plus'></i></div>" +
-                            "<h3>Create New Account</h3>" +
-                            "<p>Register as a new user to start managing your driving school operations.</p>" +
-                            "<div class='btn-row'><a class='btn secondary' href='jsp/register.jsp'>Register <i class='fas fa-user-plus'></i></a></div>" +
                             "</div>" +
-
+                            "<div class=\'login-form-card\'>" +
+                            "<div class=\'lfc-header\'>" +
+                            "<div class=\'lfc-avatar\'><i class=\'fas fa-user-circle\'></i></div>" +
+                            "<h3>Welcome Back</h3>" +
+                            "<p>Sign in to access your dashboard</p>" +
+                            "</div>" +
+                            errorMsg +
+                            "<form action=\'" + req.getContextPath() + "/login\' method=\'post\'>" +
+                            "<div class=\'lfc-group\'>" +
+                            "<label>Username</label>" +
+                            "<div class=\'lfc-input-wrap\'><i class=\'fas fa-user\'></i><input type=\'text\' name=\'username\' placeholder=\'Enter your username\' required></div>" +
+                            "</div>" +
+                            "<div class=\'lfc-group\'>" +
+                            "<label>Password</label>" +
+                            "<div class=\'lfc-input-wrap\'><i class=\'fas fa-lock\'></i><input type=\'password\' name=\'password\' placeholder=\'Enter your password\' required></div>" +
+                            "</div>" +
+                            "<button type=\'submit\' class=\'lfc-btn\'><i class=\'fas fa-sign-in-alt\'></i> Login to Dashboard</button>" +
+                            "</form>" +
+                            "</div>" +
                             "</div>";
         }
 
@@ -196,17 +223,18 @@ public class HomeServlet extends HttpServlet {
                         "}" +
                         "" +
                         ".header {" +
-                        "  background: rgba(255, 255, 255, 0.95);" +
-                        "  backdrop-filter: blur(10px);" +
-                        "  border-radius: 24px;" +
-                        "  padding: 20px 30px;" +
-                        "  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);" +
+                        "  background: rgba(255,255,255,0.97);" +
+                        "  backdrop-filter: blur(16px);" +
+                        "  border-radius: 20px;" +
+                        "  padding: 16px 28px;" +
+                        "  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset;" +
                         "  display: flex;" +
                         "  justify-content: space-between;" +
                         "  align-items: center;" +
                         "  flex-wrap: wrap;" +
-                        "  gap: 20px;" +
+                        "  gap: 16px;" +
                         "  animation: slideDown 0.5s ease;" +
+                        "  border: 1px solid rgba(255,255,255,0.6);" +
                         "}" +
                         "" +
                         "@keyframes slideDown {" +
@@ -518,6 +546,181 @@ public class HomeServlet extends HttpServlet {
                         "  font-size: 13px;" +
                         "}" +
                         "" +
+                        "/* Login Hero Layout */" +
+                        ".login-hero-wrap {" +
+                        "  display: flex;" +
+                        "  align-items: center;" +
+                        "  gap: 60px;" +
+                        "  padding: 20px 0 40px 0;" +
+                        "}" +
+                        ".login-features {" +
+                        "  flex: 1;" +
+                        "  color: white;" +
+                        "}" +
+                        ".login-tag {" +
+                        "  display: inline-flex;" +
+                        "  align-items: center;" +
+                        "  gap: 8px;" +
+                        "  background: rgba(255,255,255,0.15);" +
+                        "  border: 1px solid rgba(255,255,255,0.25);" +
+                        "  color: white;" +
+                        "  padding: 6px 16px;" +
+                        "  border-radius: 20px;" +
+                        "  font-size: 13px;" +
+                        "  font-weight: 600;" +
+                        "  margin-bottom: 24px;" +
+                        "}" +
+                        ".login-headline {" +
+                        "  font-size: 48px !important;" +
+                        "  font-weight: 800 !important;" +
+                        "  line-height: 1.1 !important;" +
+                        "  margin-bottom: 20px !important;" +
+                        "  -webkit-text-fill-color: white !important;" +
+                        "  background: none !important;" +
+                        "}" +
+                        ".login-headline span {" +
+                        "  color: #e9d5ff;" +
+                        "  -webkit-text-fill-color: #e9d5ff;" +
+                        "}" +
+                        ".login-sub {" +
+                        "  font-size: 16px;" +
+                        "  line-height: 1.7;" +
+                        "  color: rgba(255,255,255,0.85);" +
+                        "  margin-bottom: 32px;" +
+                        "}" +
+                        ".feat-list {" +
+                        "  display: flex;" +
+                        "  flex-direction: column;" +
+                        "  gap: 12px;" +
+                        "}" +
+                        ".feat-item {" +
+                        "  display: flex;" +
+                        "  align-items: center;" +
+                        "  gap: 12px;" +
+                        "  color: rgba(255,255,255,0.9);" +
+                        "  font-size: 15px;" +
+                        "  font-weight: 500;" +
+                        "}" +
+                        ".feat-item i {" +
+                        "  width: 34px;" +
+                        "  height: 34px;" +
+                        "  background: rgba(255,255,255,0.15);" +
+                        "  border-radius: 8px;" +
+                        "  display: flex;" +
+                        "  align-items: center;" +
+                        "  justify-content: center;" +
+                        "  font-size: 14px;" +
+                        "  flex-shrink: 0;" +
+                        "}" +
+                        ".login-form-card {" +
+                        "  background: white;" +
+                        "  border-radius: 24px;" +
+                        "  padding: 44px 40px;" +
+                        "  width: 400px;" +
+                        "  flex-shrink: 0;" +
+                        "  box-shadow: 0 24px 64px rgba(0,0,0,0.25);" +
+                        "}" +
+                        ".lfc-header {" +
+                        "  text-align: center;" +
+                        "  margin-bottom: 28px;" +
+                        "}" +
+                        ".lfc-avatar {" +
+                        "  width: 64px;" +
+                        "  height: 64px;" +
+                        "  background: linear-gradient(135deg, #667eea, #764ba2);" +
+                        "  border-radius: 18px;" +
+                        "  display: inline-flex;" +
+                        "  align-items: center;" +
+                        "  justify-content: center;" +
+                        "  font-size: 28px;" +
+                        "  color: white;" +
+                        "  margin-bottom: 14px;" +
+                        "}" +
+                        ".lfc-header h3 {" +
+                        "  font-size: 22px;" +
+                        "  font-weight: 800;" +
+                        "  color: #1f2937;" +
+                        "  margin-bottom: 4px;" +
+                        "}" +
+                        ".lfc-header p {" +
+                        "  color: #6b7280;" +
+                        "  font-size: 14px;" +
+                        "  margin-bottom: 0;" +
+                        "}" +
+                        ".login-error {" +
+                        "  background: #fee2e2;" +
+                        "  color: #991b1b;" +
+                        "  border: 1px solid #fca5a5;" +
+                        "  padding: 10px 14px;" +
+                        "  border-radius: 10px;" +
+                        "  font-size: 13px;" +
+                        "  margin-bottom: 18px;" +
+                        "  display: flex;" +
+                        "  align-items: center;" +
+                        "  gap: 8px;" +
+                        "}" +
+                        ".lfc-group {" +
+                        "  margin-bottom: 16px;" +
+                        "}" +
+                        ".lfc-group label {" +
+                        "  display: block;" +
+                        "  font-size: 13px;" +
+                        "  font-weight: 600;" +
+                        "  color: #374151;" +
+                        "  margin-bottom: 7px;" +
+                        "}" +
+                        ".lfc-input-wrap {" +
+                        "  position: relative;" +
+                        "}" +
+                        ".lfc-input-wrap i {" +
+                        "  position: absolute;" +
+                        "  left: 13px;" +
+                        "  top: 50%;" +
+                        "  transform: translateY(-50%);" +
+                        "  color: #9ca3af;" +
+                        "  font-size: 14px;" +
+                        "}" +
+                        ".lfc-input-wrap input {" +
+                        "  width: 100%;" +
+                        "  padding: 11px 14px 11px 38px;" +
+                        "  border: 2px solid #e5e7eb;" +
+                        "  border-radius: 11px;" +
+                        "  font-size: 14px;" +
+                        "  font-family: inherit;" +
+                        "  color: #1f2937;" +
+                        "  transition: border-color 0.2s;" +
+                        "}" +
+                        ".lfc-input-wrap input:focus {" +
+                        "  outline: none;" +
+                        "  border-color: #667eea;" +
+                        "}" +
+                        ".lfc-btn {" +
+                        "  width: 100%;" +
+                        "  margin-top: 8px;" +
+                        "  padding: 13px;" +
+                        "  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" +
+                        "  color: white;" +
+                        "  border: none;" +
+                        "  border-radius: 12px;" +
+                        "  font-size: 15px;" +
+                        "  font-weight: 700;" +
+                        "  cursor: pointer;" +
+                        "  font-family: inherit;" +
+                        "  display: flex;" +
+                        "  align-items: center;" +
+                        "  justify-content: center;" +
+                        "  gap: 8px;" +
+                        "  transition: opacity 0.2s, transform 0.1s;" +
+                        "}" +
+                        ".lfc-btn:hover { opacity: 0.9; transform: translateY(-1px); }" +
+                        "@media (max-width: 900px) {" +
+                        "  .login-hero-wrap { flex-direction: column; gap: 30px; }" +
+                        "  .login-form-card { width: 100%; max-width: 420px; }" +
+                        "  .login-headline { font-size: 32px !important; text-align: center; }" +
+                        "  .login-features { text-align: center; }" +
+                        "  .feat-list { align-items: center; }" +
+                        "}" +
+                        "" +
                         "/* Responsive */" +
                         "@media (max-width: 768px) {" +
                         "  .fixed-header {" +
@@ -540,6 +743,9 @@ public class HomeServlet extends HttpServlet {
                         "    padding: 0 15px 15px 15px;" +
                         "  }" +
                         "}" +
+                        "@keyframes floatUp {" +"  0% { opacity:0; transform: translateY(40px); }" +"  100% { opacity:1; transform: translateY(0); }" +"}" +"@keyframes fadeInLeft {" +"  0% { opacity:0; transform: translateX(-40px); }" +"  100% { opacity:1; transform: translateX(0); }" +"}" +"@keyframes fadeInRight {" +"  0% { opacity:0; transform: translateX(40px); }" +"  100% { opacity:1; transform: translateX(0); }" +"}" +"@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(102,126,234,0.4); } 50% { box-shadow: 0 0 0 12px rgba(102,126,234,0); } }" +".login-hero-wrap { animation: floatUp 0.7s ease both; }" +".login-features { animation: fadeInLeft 0.8s ease 0.1s both; }" +".login-form-card { animation: fadeInRight 0.8s ease 0.2s both; transition: box-shadow 0.3s; }" +".login-form-card:hover { box-shadow: 0 28px 72px rgba(0,0,0,0.3); }" +".lfc-avatar { animation: pulse 2.5s infinite 1s; }" +".feat-item { transition: transform 0.2s ease; }" +".feat-item:hover { transform: translateX(6px); }" +".logo { width:52px; height:52px; background: linear-gradient(135deg,#667eea,#764ba2); border-radius:16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(102,126,234,0.4); transition: transform 0.3s; }" +".logo:hover { transform: rotate(10deg) scale(1.1); }" +".logo i { font-size:26px; color:white; }" +".brand-info h1 { font-size:22px; font-weight:800; letter-spacing:-0.5px; }" +".cards-grid .card:nth-child(1){animation:floatUp 0.5s 0.05s ease both;}" +".cards-grid .card:nth-child(2){animation:floatUp 0.5s 0.1s ease both;}" +".cards-grid .card:nth-child(3){animation:floatUp 0.5s 0.15s ease both;}" +".cards-grid .card:nth-child(4){animation:floatUp 0.5s 0.2s ease both;}" +".cards-grid .card:nth-child(5){animation:floatUp 0.5s 0.25s ease both;}" +".cards-grid .card:nth-child(6){animation:floatUp 0.5s 0.3s ease both;}" +".cards-grid .card:nth-child(7){animation:floatUp 0.5s 0.35s ease both;}" +".stats-section .stat-card:nth-child(1){animation:floatUp 0.5s 0.05s ease both;}" +".stats-section .stat-card:nth-child(2){animation:floatUp 0.5s 0.12s ease both;}" +".stats-section .stat-card:nth-child(3){animation:floatUp 0.5s 0.19s ease both;}" +".stats-section .stat-card:nth-child(4){animation:floatUp 0.5s 0.26s ease both;}" +".lfc-btn:hover { box-shadow: 0 8px 24px rgba(102,126,234,0.45); opacity:0.92; transform:translateY(-1px); }" +
+                        ".welcome-row { display:flex; align-items:center; gap:10px; }" +".user-avatar { width:36px; height:36px; background:linear-gradient(135deg,#667eea,#764ba2); border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:15px; flex-shrink:0; box-shadow:0 2px 8px rgba(102,126,234,0.4); }" +
+                        ".header-logout-btn {" +"  display: inline-flex; align-items: center; gap: 8px;" +"  padding: 10px 20px;" +"  background: linear-gradient(135deg, #ef4444, #dc2626);" +"  color: white;" +"  text-decoration: none;" +"  border-radius: 12px;" +"  font-weight: 600;" +"  font-size: 14px;" +"  transition: all 0.2s ease;" +"  box-shadow: 0 3px 12px rgba(239,68,68,0.3);" +"}" +".header-logout-btn:hover {" +"  transform: translateY(-2px);" +"  box-shadow: 0 6px 20px rgba(239,68,68,0.4);" +"  opacity: 0.92;" +"}" +
                         "</style>" +
                         "</head>" +
                         "<body>" +
@@ -549,48 +755,43 @@ public class HomeServlet extends HttpServlet {
                         "<div class='fixed-header'>" +
                         "<header class='header'>" +
                         "<div class='brand'>" +
-                        "<div class='logo'><i class='fas fa-car'></i></div>" +
+                        "<div class='logo'><i class='fas fa-road'></i></div>" +
                         "<div class='brand-info'>" +
-                        "<h1>DriveMaster Academy</h1>" +
+                        "<h1>Road<span style=\"color:#667eea\">ify</span></h1>" +
                         welcomeLine +
                         "</div>" +
                         "</div>" +
-                        "<div class='system-badge'>" +
-                        "<i class='fas fa-cog'></i> v2.0 | Jakarta Servlet + JSP" +
-                        "</div>" +
+                        (loggedIn ? "<a href='" + req.getContextPath() + "/logout' class='header-logout-btn'><i class='fas fa-sign-out-alt'></i> Logout</a>" : "") +
                         "</header>" +
                         "</div>" +
                         "" +
                         "<!-- Scrollable Content -->" +
                         "<div class='scrollable-content'>" +
                         "" +
-                        "<!-- Hero Section -->" +
-                        "<section class='hero'>" +
-                        "<h2>" + (loggedIn ? "Welcome to Your Dashboard" : "Your Journey Starts Here") + "</h2>" +
-                        "<p>" + (loggedIn ? "Manage all aspects of your driving school from one central dashboard. Track students, instructors, vehicles, and more." : "DriveMaster Academy's comprehensive management system helps you streamline student registrations, instructor assignments, vehicle tracking, payments, and driving tests all in one place.") + "</p>" +
-                        "</section>" +
+                        "<!-- Hero Section (logged in only) -->" +
+                        (loggedIn ? "<section class='hero'><h2>Welcome to Your Dashboard</h2><p>Manage all aspects of your driving school from one central dashboard. Track students, instructors, vehicles, and more.</p></section>" : "") +
                         "" +
                         "<!-- Stats Section (only for logged in users) -->" +
                         (loggedIn ?
                                 "<div class='stats-section'>" +
                                 "<div class='stat-card'>" +
                                 "<i class='fas fa-users'></i>" +
-                                "<div class='stat-number'>0</div>" +
+                                "<div class='stat-number'>" + studentDAO.getAllStudents().size() + "</div>" +
                                 "<div class='stat-label'>Total Students</div>" +
                                 "</div>" +
                                 "<div class='stat-card'>" +
                                 "<i class='fas fa-chalkboard-teacher'></i>" +
-                                "<div class='stat-number'>0</div>" +
+                                "<div class='stat-number'>" + instructorDAO.getAllActiveInstructors().size() + "</div>" +
                                 "<div class='stat-label'>Active Instructors</div>" +
                                 "</div>" +
                                 "<div class='stat-card'>" +
                                 "<i class='fas fa-car'></i>" +
-                                "<div class='stat-number'>0</div>" +
+                                "<div class='stat-number'>" + vehicleDAO.getAllActiveVehicles().size() + "</div>" +
                                 "<div class='stat-label'>Active Vehicles</div>" +
                                 "</div>" +
                                 "<div class='stat-card'>" +
                                 "<i class='fas fa-calendar-check'></i>" +
-                                "<div class='stat-number'>0</div>" +
+                                "<div class='stat-number'>" + lessonDAO.getLessonsByDate(java.time.LocalDate.now().toString()).size() + "</div>" +
                                 "<div class='stat-label'>Today's Lessons</div>" +
                                 "</div>" +
                                 "</div>" : "") +
@@ -600,7 +801,7 @@ public class HomeServlet extends HttpServlet {
                         "" +
                         "<!-- Footer -->" +
                         "<footer class='footer'>" +
-                        "<p>© 2024 DriveMaster Academy - Driving School Management System | All Rights Reserved</p>" +
+                        "<p>© 2024 Roadify - Driving School Management System | All Rights Reserved</p>" +
                         "<p style='margin-top: 10px; font-size: 12px;'><i class='fas fa-shield-alt'></i> Secure & Reliable | <i class='fas fa-chart-line'></i> Real-time Updates | <i class='fas fa-headset'></i> 24/7 Support</p>" +
                         "</footer>" +
                         "</div>" +

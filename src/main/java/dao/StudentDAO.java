@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 
 public class StudentDAO {
 
-    private final String filePath = "students.txt";
+    private static final String filePath = "C:/Users/DELL/OneDrive/Desktop/DrivingSchoolSystem-main/data/students.txt";
 
     // Generate next student ID (S001, S002)
     public String generateNextStudentId() {

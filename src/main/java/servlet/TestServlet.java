@@ -132,22 +132,26 @@ public class TestServlet extends HttpServlet {
             String testId = req.getParameter("testId");
             String scoreStr = req.getParameter("score");
             String notes = req.getParameter("notes");
+            String result = req.getParameter("result"); // "Pass" or "Fail"
 
-            if (testId == null || scoreStr == null) {
+            if (testId == null || result == null || (!result.equals("Pass") && !result.equals("Fail"))) {
                 resp.sendRedirect(req.getContextPath() + "/tests?error=invalidData");
                 return;
             }
 
-            int score;
-            try {
-                score = Integer.parseInt(scoreStr);
-                if (score < 0 || score > 100) throw new NumberFormatException();
-            } catch (NumberFormatException e) {
-                resp.sendRedirect(req.getContextPath() + "/tests?action=results&id=" + testId + "&error=invalidScore");
-                return;
+            // Score is optional; default to 0 if not provided
+            int score = 0;
+            if (scoreStr != null && !scoreStr.trim().isEmpty()) {
+                try {
+                    score = Integer.parseInt(scoreStr.trim());
+                    if (score < 0 || score > 100) throw new NumberFormatException();
+                } catch (NumberFormatException e) {
+                    resp.sendRedirect(req.getContextPath() + "/tests?action=results&id=" + testId + "&error=invalidScore");
+                    return;
+                }
             }
 
-            if (testDAO.submitResults(testId, score, notes)) {
+            if (testDAO.submitResults(testId, score, result, notes)) {
                 resp.sendRedirect(req.getContextPath() + "/tests?success=resultsUpdated");
             } else {
                 resp.sendRedirect(req.getContextPath() + "/tests?error=resultsFailed");

@@ -1,6 +1,4 @@
 U001,admin,admin@school.com,admin123,admin
-U002,john,john@gmail.com,pass123,student
-U003,sahan,sahan@gmail,s@123,student
-U004,sarfi,saaaa@gmail.com,s1234,student
-U004,faaaah,afsf@gmail.com,12334d,student
-U006,iqbal,iqbal@gmail.com,gfr3,student
+
+U003,sahan,sahan@gmail.com,sa1234,student
+U004,alhar,alhar@gmail.com,al1234,student

@@ -521,6 +521,10 @@
                     <td><%= test.getTestType() %></td>
                     <td><%= test.getExaminerName() %></td>
                     <td>
+                        <a href="<%= request.getContextPath() %>/tests?action=results&id=<%= test.getTestId() %>"
+                           class="action-btn btn-results">
+                            <i class="fas fa-star"></i> Enter Results
+                        </a>
                         <a href="<%= request.getContextPath() %>/tests?action=edit&id=<%= test.getTestId() %>"
                            class="action-btn btn-reschedule">
                             <i class="fas fa-calendar-alt"></i> Reschedule

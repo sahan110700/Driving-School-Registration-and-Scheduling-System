@@ -7,7 +7,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class VehicleDAO {
-    private final String filePath = "vehicles.txt";
+    private static final String filePath = "C:/Users/DELL/OneDrive/Desktop/DrivingSchoolSystem-main/data/vehicles.txt";
 
     // Generate next vehicle ID (V001, V002)
     public String generateNextVehicleId() {

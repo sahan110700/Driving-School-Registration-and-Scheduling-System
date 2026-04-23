@@ -129,6 +129,52 @@
             margin-top: 15px;
         }
 
+        /* Pass/Fail toggle */
+        .pass-fail-group {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+        }
+
+        .pass-fail-label {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .pass-fail-label input[type="radio"] {
+            display: none;
+        }
+
+        .pass-fail-card {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 18px;
+            border-radius: 14px;
+            border: 3px solid #e5e7eb;
+            font-size: 18px;
+            font-weight: 700;
+            transition: all 0.2s ease;
+            background: #f9fafb;
+        }
+
+        .pass-fail-label input[type="radio"]:checked + .pass-fail-card.pass-card {
+            border-color: #10b981;
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .pass-fail-label input[type="radio"]:checked + .pass-fail-card.fail-card {
+            border-color: #ef4444;
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .pass-fail-card:hover {
+            border-color: #8b5cf6;
+        }
+
         .submit-btn {
             margin-top: 20px;
             padding: 14px 30px;
@@ -194,14 +240,28 @@
             <input type="hidden" name="testId" value="<%= test != null ? test.getTestId() : "" %>">
 
             <div class="form-group">
-                <label><i class="fas fa-chart-line"></i> Score (0-100) *</label>
-                <input type="number" id="score" name="score" class="score-input"
-                       min="0" max="100" step="1" required
-                       placeholder="Enter score">
+                <label><i class="fas fa-flag-checkered"></i> Test Result *</label>
+                <div class="pass-fail-group">
+                    <label class="pass-fail-label">
+                        <input type="radio" name="result" value="Pass" required>
+                        <div class="pass-fail-card pass-card">
+                            <i class="fas fa-check-circle"></i> PASS
+                        </div>
+                    </label>
+                    <label class="pass-fail-label">
+                        <input type="radio" name="result" value="Fail" required>
+                        <div class="pass-fail-card fail-card">
+                            <i class="fas fa-times-circle"></i> FAIL
+                        </div>
+                    </label>
+                </div>
             </div>
 
-            <div id="resultPreview" class="result-preview">
-                <i class="fas fa-info-circle"></i> Enter score to see result
+            <div class="form-group">
+                <label><i class="fas fa-chart-line"></i> Score (0-100) <span style="font-weight:400; color:#6b7280;">— optional</span></label>
+                <input type="number" id="score" name="score" class="score-input"
+                       min="0" max="100" step="1"
+                       placeholder="Enter score (optional)">
             </div>
 
             <div class="form-group">
@@ -217,23 +277,12 @@
 </div>
 
 <script>
-    const scoreInput = document.getElementById('score');
-    const resultPreview = document.getElementById('resultPreview');
-
-    scoreInput.addEventListener('input', function() {
-        const score = parseInt(this.value);
-        if (isNaN(score)) {
-            resultPreview.innerHTML = '<i class="fas fa-info-circle"></i> Enter score to see result';
-            resultPreview.style.background = '#fef3c7';
-        } else if (score >= 70) {
-            resultPreview.innerHTML = '<i class="fas fa-check-circle"></i> Result: PASS (Score: ' + score + ')<br>Congratulations! Student passed the test.';
-            resultPreview.style.background = '#d1fae5';
-            resultPreview.style.color = '#065f46';
-        } else {
-            resultPreview.innerHTML = '<i class="fas fa-times-circle"></i> Result: FAIL (Score: ' + score + ')<br>Student needs to retake the test.';
-            resultPreview.style.background = '#fee2e2';
-            resultPreview.style.color = '#991b1b';
-        }
+    // Highlight selected Pass/Fail card visually on click (radio already handles state)
+    document.querySelectorAll('.pass-fail-label input[type="radio"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+            document.querySelectorAll('.pass-fail-card').forEach(c => c.style.transform = '');
+            this.nextElementSibling.style.transform = 'scale(1.03)';
+        });
     });
 </script>
 

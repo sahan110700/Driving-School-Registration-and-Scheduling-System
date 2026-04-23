@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class InstructorDAO {
-    private final String filePath = "instructors.txt";
+    private static final String filePath = "C:/Users/DELL/OneDrive/Desktop/DrivingSchoolSystem-main/data/instructors.txt";
 
     // Generate next instructor ID (INS001, INS002)
     public String generateNextInstructorId() {

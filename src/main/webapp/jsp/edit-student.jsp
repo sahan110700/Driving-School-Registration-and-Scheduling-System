@@ -423,8 +423,23 @@
                     </div>
                 </div>
 
+                <!-- Username (only for add) -->
+                <% if (isAdd) { %>
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-user-circle"></i> Username
+                        <span class="required">*</span>
+                    </label>
+                    <input type="text" id="username" name="username"
+                           placeholder="Username for login" required>
+                    <div class="hint">
+                        <i class="fas fa-info-circle"></i> Student uses this to login
+                    </div>
+                </div>
+                <% } %>
+
                 <!-- Password -->
-                <div class="form-group-full">
+                <div class="form-group<%= isAdd ? "" : "-full" %>">
                     <label>
                         <i class="fas fa-lock"></i> Password
                         <span class="required">*</span>

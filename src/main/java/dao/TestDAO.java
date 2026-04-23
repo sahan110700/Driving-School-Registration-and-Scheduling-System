@@ -136,12 +136,12 @@ public class TestDAO {
     }
 
     // Submit test results
-    public boolean submitResults(String testId, int score, String notes) {
+    public boolean submitResults(String testId, int score, String result, String notes) {
         List<Test> tests = getAllTests();
         for (Test test : tests) {
             if (test.getTestId().equals(testId)) {
                 test.setScore(score);
-                test.setResult(score >= 70 ? "Pass" : "Fail");
+                test.setResult(result); // "Pass" or "Fail" set directly by instructor
                 test.setStatus("Completed");
                 if (notes != null) test.setNotes(notes);
                 return saveAllTests(tests);

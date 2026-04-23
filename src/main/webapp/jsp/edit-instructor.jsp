@@ -331,6 +331,14 @@
 
                 <div class="form-group-full">
                     <label><i class="fas fa-lock"></i> Password <span class="required">*</span></label>
+                    <% if (isAdd) { %>
+                    <input type="text" id="username" name="username"
+                           placeholder="Username for login" required
+                           style="margin-bottom:8px;">
+                    <div style="font-size:11px;color:#6b7280;margin-bottom:12px;">
+                        <i class="fas fa-info-circle"></i> Instructor uses this to login
+                    </div>
+                    <% } %>
                     <input type="password" id="password" name="password"
                            placeholder="<%= isAdd ? "Create password (min 6 chars)" : "Leave blank to keep current" %>"
                         <%= isAdd ? "required" : "" %>>
