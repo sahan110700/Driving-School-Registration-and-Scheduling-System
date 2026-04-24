@@ -8,30 +8,24 @@ import java.util.stream.Collectors;
 public class InstructorDAO {
     private static final String filePath = "C:/Users/DELL/OneDrive/Desktop/DrivingSchoolSystem-main/data/instructors.txt";
 
-    // Generate next instructor ID (INS001, INS002)
     public String generateNextInstructorId() {
         List<Instructor> instructors = getAllInstructors();
         int nextId = instructors.size() + 1;
         return String.format("INS%03d", nextId);
     }
 
-    // Check if NIC already exists
     public boolean isNicExists(String nic, String excludeId) {
-        List<Instructor> instructors = getAllInstructors();
-        return instructors.stream()
+        return getAllInstructors().stream()
                 .filter(i -> !i.getInstructorId().equals(excludeId))
                 .anyMatch(i -> i.getNic().equals(nic));
     }
 
-    // Check if License Number already exists
     public boolean isLicenseNumberExists(String licenseNumber, String excludeId) {
-        List<Instructor> instructors = getAllInstructors();
-        return instructors.stream()
+        return getAllInstructors().stream()
                 .filter(i -> !i.getInstructorId().equals(excludeId))
                 .anyMatch(i -> i.getLicenseNumber().equals(licenseNumber));
     }
 
-    // Add new instructor
     public boolean addInstructor(Instructor instructor) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
             writer.write(instructorToLine(instructor));
@@ -43,11 +37,9 @@ public class InstructorDAO {
         }
     }
 
-    // Update instructor
     public boolean updateInstructor(Instructor updatedInstructor) {
         List<Instructor> instructors = getAllInstructors();
         boolean found = false;
-
         for (int i = 0; i < instructors.size(); i++) {
             if (instructors.get(i).getInstructorId().equals(updatedInstructor.getInstructorId())) {
                 instructors.set(i, updatedInstructor);
@@ -58,26 +50,43 @@ public class InstructorDAO {
         return found && saveAllInstructors(instructors);
     }
 
-    // Delete instructor (soft delete - change status to INACTIVE)
+    // Soft delete — sets INACTIVE in instructors.txt AND blocks login in users.txt
     public boolean deleteInstructor(String instructorId) {
+        Instructor instructor = getInstructorById(instructorId);
+        if (instructor == null) return false;
+
         List<Instructor> instructors = getAllInstructors();
-        for (Instructor instructor : instructors) {
-            if (instructor.getInstructorId().equals(instructorId)) {
-                instructor.setStatus("INACTIVE");
-                return saveAllInstructors(instructors);
+        for (Instructor i : instructors) {
+            if (i.getInstructorId().equals(instructorId)) {
+                i.setStatus("INACTIVE");
+                if (saveAllInstructors(instructors)) {
+                    // Block login by marking user deleted in users.txt using their email
+                    new UserDAO().markUserDeletedByEmail(instructor.getEmail());
+                    System.out.println("[InstructorDAO] Deactivated + blocked login for: " + instructor.getEmail());
+                    return true;
+                }
+                return false;
             }
         }
         return false;
     }
 
-    // Hard delete (permanent removal)
+    // Hard delete — removes from instructors.txt AND blocks login in users.txt
     public boolean hardDeleteInstructor(String instructorId) {
+        Instructor instructor = getInstructorById(instructorId);
+        if (instructor == null) return false;
+
         List<Instructor> instructors = getAllInstructors();
         boolean removed = instructors.removeIf(i -> i.getInstructorId().equals(instructorId));
-        return removed && saveAllInstructors(instructors);
+
+        if (removed && saveAllInstructors(instructors)) {
+            new UserDAO().markUserDeletedByEmail(instructor.getEmail());
+            System.out.println("[InstructorDAO] Hard deleted + blocked login for: " + instructor.getEmail());
+            return true;
+        }
+        return false;
     }
 
-    // Get instructor by ID
     public Instructor getInstructorById(String instructorId) {
         return getAllInstructors().stream()
                 .filter(i -> i.getInstructorId().equals(instructorId))
@@ -85,21 +94,16 @@ public class InstructorDAO {
                 .orElse(null);
     }
 
-    // Get all active instructors (status = ACTIVE)
     public List<Instructor> getAllActiveInstructors() {
         return getAllInstructors().stream()
                 .filter(i -> "ACTIVE".equals(i.getStatus()))
                 .collect(Collectors.toList());
     }
 
-    // Get all instructors (including inactive)
     public List<Instructor> getAllInstructors() {
         List<Instructor> instructors = new ArrayList<>();
         File file = new File(filePath);
-
-        if (!file.exists()) {
-            return instructors;
-        }
+        if (!file.exists()) return instructors;
 
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
@@ -117,102 +121,65 @@ public class InstructorDAO {
         return instructors;
     }
 
-    // Search instructors by name
     public List<Instructor> searchByName(String name) {
         return getAllActiveInstructors().stream()
                 .filter(i -> i.getName().toLowerCase().contains(name.toLowerCase()))
                 .collect(Collectors.toList());
     }
 
-    // Filter by specialization
     public List<Instructor> filterBySpecialization(String specialization) {
         return getAllActiveInstructors().stream()
                 .filter(i -> i.getSpecialization().equals(specialization))
                 .collect(Collectors.toList());
     }
 
-    // Filter by availability
     public List<Instructor> filterByAvailability(String availability) {
         return getAllActiveInstructors().stream()
                 .filter(i -> i.getAvailability().equals(availability))
                 .collect(Collectors.toList());
     }
 
-    // Advanced search with multiple filters
     public List<Instructor> searchInstructors(String name, String specialization, String availability) {
         return getAllActiveInstructors().stream()
-                .filter(i -> name == null || name.isEmpty() ||
-                        i.getName().toLowerCase().contains(name.toLowerCase()))
-                .filter(i -> specialization == null || specialization.isEmpty() ||
-                        i.getSpecialization().equals(specialization))
-                .filter(i -> availability == null || availability.isEmpty() ||
-                        i.getAvailability().equals(availability))
+                .filter(i -> name == null || name.isEmpty() || i.getName().toLowerCase().contains(name.toLowerCase()))
+                .filter(i -> specialization == null || specialization.isEmpty() || i.getSpecialization().equals(specialization))
+                .filter(i -> availability == null || availability.isEmpty() || i.getAvailability().equals(availability))
                 .collect(Collectors.toList());
     }
 
-    // Get instructors who can teach specific transmission type
     public List<Instructor> getInstructorsByTransmission(String transmissionType) {
         return getAllActiveInstructors().stream()
-                .filter(i -> "Both".equals(i.getSpecialization()) ||
-                        i.getSpecialization().equals(transmissionType))
+                .filter(i -> "Both".equals(i.getSpecialization()) || i.getSpecialization().equals(transmissionType))
                 .collect(Collectors.toList());
     }
 
-    // Get available instructors at specific time (simplified version)
     public List<Instructor> getAvailableInstructors(String date, String time) {
-        // This is a simplified version - in real implementation, you'd check test schedules
         return getAllActiveInstructors().stream()
                 .filter(i -> "Available".equals(i.getAvailability()))
                 .collect(Collectors.toList());
     }
 
-    // Convert Instructor to CSV line
     private String instructorToLine(Instructor i) {
         return String.join(",",
-                i.getInstructorId(),
-                i.getName(),
-                i.getNic(),
-                i.getPhone(),
-                i.getEmail(),
-                i.getAddress(),
-                i.getPassword(),
-                i.getLicenseNumber(),
-                i.getSpecialization(),
-                String.valueOf(i.getExperience()),
-                i.getAvailability(),
-                i.getGender(),
-                i.getStatus(),
-                i.getJoinDate()
+                i.getInstructorId(), i.getName(), i.getNic(), i.getPhone(),
+                i.getEmail(), i.getAddress(), i.getPassword(), i.getLicenseNumber(),
+                i.getSpecialization(), String.valueOf(i.getExperience()),
+                i.getAvailability(), i.getGender(), i.getStatus(), i.getJoinDate()
         );
     }
 
-    // Convert CSV line to Instructor
     private Instructor lineToInstructor(String line) {
         String[] parts = line.split(",", -1);
-
-        if (parts.length < 14) {
-            throw new IllegalArgumentException("Invalid line format");
-        }
+        if (parts.length < 14) throw new IllegalArgumentException("Invalid line format");
 
         return new Instructor(
-                parts[0].trim(),  // instructorId
-                parts[1].trim(),  // name
-                parts[2].trim(),  // nic
-                parts[3].trim(),  // phone
-                parts[4].trim(),  // email
-                parts[5].trim(),  // address
-                parts[6].trim(),  // password
-                parts[7].trim(),  // licenseNumber
-                parts[8].trim(),  // specialization
-                Integer.parseInt(parts[9].trim()), // experience
-                parts[10].trim(), // availability
-                parts[11].trim(), // gender
-                parts[12].trim(), // status
-                parts[13].trim()  // joinDate
+                parts[0].trim(), parts[1].trim(), parts[2].trim(), parts[3].trim(),
+                parts[4].trim(), parts[5].trim(), parts[6].trim(), parts[7].trim(),
+                parts[8].trim(), Integer.parseInt(parts[9].trim()),
+                parts[10].trim(), parts[11].trim(), parts[12].trim(), parts[13].trim()
         );
     }
 
-    // Save all instructors to file
     private boolean saveAllInstructors(List<Instructor> instructors) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
             for (Instructor i : instructors) {

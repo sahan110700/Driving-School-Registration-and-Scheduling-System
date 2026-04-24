@@ -1,4 +1,2 @@
 U001,admin,admin@school.com,admin123,admin
-
-U003,sahan,sahan@gmail.com,sa1234,student
-U004,alhar,alhar@gmail.com,al1234,student
+U005,sahan,sahan@gmail.com,sa1234,student,deleted
