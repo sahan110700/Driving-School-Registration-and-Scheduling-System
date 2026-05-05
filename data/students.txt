@@ -1,0 +1,2 @@
+S001,sahan,123456643333,0758585874,sahan@gmail.com,adgff,sa1234,Heavy Vehicle,Basic,2026-04-26,22,Male
+S002,sajeer,123345643633,0746566662,sa@gmail.com,jjwfwaf,sa1234,Light Vehicle,Basic,2026-04-26,22,Male

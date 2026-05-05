@@ -1,13 +1,18 @@
 package servlet;
 
 import dao.InstructorDAO;
+import dao.LessonDAO;
+import dao.TestDAO;
 import dao.UserDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import model.Instructor;
+import model.Lesson;
+import model.Test;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -17,13 +22,16 @@ import java.util.List;
 public class InstructorServlet extends HttpServlet {
 
     private final InstructorDAO instructorDAO = new InstructorDAO();
-    private final UserDAO userDAO = new UserDAO(); // FIX: to save login credentials
+    private final UserDAO userDAO = new UserDAO();
+    private final LessonDAO lessonDAO = new LessonDAO();
+    private final TestDAO testDAO = new TestDAO();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
 
-        if (req.getSession(false) == null || req.getSession(false).getAttribute("loggedInUser") == null) {
+        HttpSession session = req.getSession(false);
+        if (session == null || session.getAttribute("loggedInUser") == null) {
             resp.sendRedirect(req.getContextPath() + "/jsp/login.jsp");
             return;
         }
@@ -51,6 +59,40 @@ public class InstructorServlet extends HttpServlet {
             return;
         }
 
+        // FIX: "userRole" — matches LoginServlet (not "role")
+        Object roleObj = session.getAttribute("userRole");
+        String userRole = (roleObj != null) ? roleObj.toString() : "student";
+
+        // Instructor dashboard — load lessons AND tests
+        if ("instructor".equalsIgnoreCase(userRole)) {
+            String loggedInUsername = (String) session.getAttribute("loggedInUser");
+
+            // Find instructor by username match via email in users.txt → instructors.txt
+            // We match by username stored in session against instructors list
+            Instructor loggedInstructor = instructorDAO.getAllActiveInstructors().stream()
+                    .filter(i -> i.getName().equalsIgnoreCase(loggedInUsername)
+                            || i.getEmail().equalsIgnoreCase(loggedInUsername))
+                    .findFirst()
+                    .orElse(null);
+
+            if (loggedInstructor != null) {
+                String instructorId = loggedInstructor.getInstructorId();
+
+                List<Lesson> myLessons = lessonDAO.getLessonsByInstructor(instructorId);
+                req.setAttribute("myLessons", myLessons);
+
+                // FIX: Tests also loaded for instructor dashboard
+                List<Test> myTests = testDAO.getTestsByExaminer(instructorId);
+                req.setAttribute("myTests", myTests);
+
+                req.setAttribute("loggedInstructor", loggedInstructor);
+            }
+
+            req.getRequestDispatcher("/jsp/instructors.jsp").forward(req, resp);
+            return;
+        }
+
+        // Admin view — search/filter
         String searchName     = req.getParameter("searchName");
         String specialization = req.getParameter("specialization");
         String availability   = req.getParameter("availability");
@@ -94,9 +136,8 @@ public class InstructorServlet extends HttpServlet {
         String availability   = req.getParameter("availability");
         String gender         = req.getParameter("gender");
         String experienceText = req.getParameter("experience");
-        String username       = req.getParameter("username"); // FIX: for login
+        String username       = req.getParameter("username");
 
-        // Validate required fields
         if (isEmpty(name) || isEmpty(nic) || isEmpty(phone) || isEmpty(email) ||
                 isEmpty(address) || isEmpty(licenseNumber) || isEmpty(specialization) ||
                 isEmpty(availability) || isEmpty(gender) || isEmpty(experienceText)) {
@@ -108,13 +149,11 @@ public class InstructorServlet extends HttpServlet {
             return;
         }
 
-        // FIX: For ADD also require username and password
         if ("add".equals(action) && (isEmpty(username) || isEmpty(password))) {
             resp.sendRedirect(req.getContextPath() + "/instructors?action=add-form&error=empty");
             return;
         }
 
-        // Validate experience
         int experience;
         try {
             experience = Integer.parseInt(experienceText.trim());
@@ -127,7 +166,6 @@ public class InstructorServlet extends HttpServlet {
             return;
         }
 
-        // ── UPDATE ──
         if ("update".equals(action)) {
             String instructorId = req.getParameter("instructorId");
 
@@ -141,7 +179,6 @@ public class InstructorServlet extends HttpServlet {
             }
 
             Instructor existing = instructorDAO.getInstructorById(instructorId);
-            // Keep old password if blank
             String finalPassword = isEmpty(password) ? existing.getPassword() : password.trim();
 
             Instructor instructor = new Instructor(
@@ -155,9 +192,7 @@ public class InstructorServlet extends HttpServlet {
             return;
         }
 
-        // ── ADD ──
         if ("add".equals(action)) {
-            // FIX: Check username not already taken
             if (userDAO.usernameExists(username.trim())) {
                 resp.sendRedirect(req.getContextPath() + "/instructors?action=add-form&error=usernameExists");
                 return;
@@ -181,10 +216,8 @@ public class InstructorServlet extends HttpServlet {
             );
 
             boolean success = instructorDAO.addInstructor(instructor);
-
             if (success) {
-                // FIX: Save to users.txt so instructor can login with role "instructor"
-                userDAO.registerUser(username.trim(), email.trim(), password.trim());
+                userDAO.registerUser(username.trim(), email.trim(), password.trim(), "instructor");
                 resp.sendRedirect(req.getContextPath() + "/instructors?success=added");
             } else {
                 resp.sendRedirect(req.getContextPath() + "/instructors?action=add-form&error=failed");

@@ -22,7 +22,6 @@ public class HomeServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setContentType("text/html; charset=UTF-8");
-        // Prevent browser caching — stops back-button access after logout
         resp.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         resp.setHeader("Pragma", "no-cache");
         resp.setDateHeader("Expires", 0);
@@ -30,794 +29,475 @@ public class HomeServlet extends HttpServlet {
         boolean loggedIn = req.getSession(false) != null &&
                 req.getSession(false).getAttribute("loggedInUser") != null;
 
-        String username = "";
+        String username = loggedIn ? String.valueOf(req.getSession(false).getAttribute("loggedInUser")) : "";
+        String role     = "";
         if (loggedIn) {
-            username = String.valueOf(req.getSession(false).getAttribute("loggedInUser"));
+            Object r = req.getSession(false).getAttribute("userRole");
+            role = (r != null) ? r.toString() : "student";
         }
 
-        String welcomeLine;
-        if (loggedIn) {
-            String initial = username.isEmpty() ? "U" : String.valueOf(username.charAt(0)).toUpperCase();
-            welcomeLine = "<div class='welcome-row'>" +
-                    "<div class='user-avatar'>" + escape(initial) + "</div>" +
-                    "<div><div style='font-size:11px;color:#9ca3af;font-weight:500;'>Logged in as</div>" +
-                    "<strong style='color:#667eea;font-size:15px;'>" + escape(username) + "</strong></div>" +
-                    "</div>";
-        } else {
-            welcomeLine = "<div class='welcome'>Welcome! Please login to access all features</div>";
-        }
+        String initial = (!username.isEmpty()) ? String.valueOf(username.charAt(0)).toUpperCase() : "U";
+        String ctx     = req.getContextPath();
 
-        // FIX: Get role from session to show correct cards
-        String role = "";
-        if (loggedIn) {
-            Object roleObj = req.getSession(false).getAttribute("userRole");
-            role = (roleObj != null) ? roleObj.toString() : "student";
-        }
+        int totalStudents    = loggedIn ? studentDAO.getAllStudents().size() : 0;
+        int totalInstructors = loggedIn ? instructorDAO.getAllActiveInstructors().size() : 0;
+        int totalVehicles    = loggedIn ? vehicleDAO.getAllActiveVehicles().size() : 0;
+        int todayLessons     = loggedIn ? lessonDAO.getLessonsByDate(java.time.LocalDate.now().toString()).size() : 0;
 
-        String cards;
+        String error    = req.getParameter("error");
+        String errorMsg = "";
+        if ("invalid".equals(error))
+            errorMsg = "<div class='err-box'><i class='fas fa-exclamation-circle'></i> Invalid username or password.</div>";
+        else if ("empty".equals(error))
+            errorMsg = "<div class='err-box'><i class='fas fa-exclamation-circle'></i> Please fill in all fields.</div>";
+
+        String cards = "";
         if (loggedIn && "admin".equalsIgnoreCase(role)) {
-            // ADMIN sees all management cards
-            cards =
-                    "<div class='cards-grid'>" +
-
-                            "<div class='card student-card'>" +
-                            "<div class='card-icon'><i class='fas fa-user-graduate'></i></div>" +
-                            "<h3>Student Management</h3>" +
-                            "<p>Manage student registrations, profiles, and academic records with ease.</p>" +
-                            "<div class='card-stats'><span class='stat-badge'>Active Students</span></div>" +
-                            "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/students'>Access Portal <i class='fas fa-arrow-right'></i></a></div>" +
-                            "</div>" +
-
-                            "<div class='card instructor-card'>" +
-                            "<div class='card-icon'><i class='fas fa-chalkboard-teacher'></i></div>" +
-                            "<h3>Instructor Management</h3>" +
-                            "<p>Track instructor availability, qualifications, and assigned lessons.</p>" +
-                            "<div class='card-stats'><span class='stat-badge'>Active Instructors</span></div>" +
-                            "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/instructors'>Access Portal <i class='fas fa-arrow-right'></i></a></div>" +
-                            "</div>" +
-
-                            "<div class='card vehicle-card'>" +
-                            "<div class='card-icon'><i class='fas fa-car'></i></div>" +
-                            "<h3>Vehicle Management</h3>" +
-                            "<p>Maintain fleet records, track maintenance, and monitor vehicle usage.</p>" +
-                            "<div class='card-stats'><span class='stat-badge'>Active Vehicles</span></div>" +
-                            "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/vehicles'>Access Portal <i class='fas fa-arrow-right'></i></a></div>" +
-                            "</div>" +
-
-                            "<div class='card lesson-card'>" +
-                            "<div class='card-icon'><i class='fas fa-calendar-check'></i></div>" +
-                            "<h3>Lesson Scheduling</h3>" +
-                            "<p>Schedule and manage practical driving lessons efficiently.</p>" +
-                            "<div class='card-stats'><span class='stat-badge'>Upcoming Lessons</span></div>" +
-                            "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/lessons'>Access Portal <i class='fas fa-arrow-right'></i></a></div>" +
-                            "</div>" +
-
-                            "<div class='card payment-card'>" +
-                            "<div class='card-icon'><i class='fas fa-money-bill-wave'></i></div>" +
-                            "<h3>Payment Management</h3>" +
-                            "<p>Track payments, manage balances, and generate financial reports.</p>" +
-                            "<div class='card-stats'><span class='stat-badge'>Total Revenue</span></div>" +
-                            "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/payments'>Access Portal <i class='fas fa-arrow-right'></i></a></div>" +
-                            "</div>" +
-
-                            "<div class='card test-card'>" +
-                            "<div class='card-icon'><i class='fas fa-clipboard-list'></i></div>" +
-                            "<h3>Test Management</h3>" +
-                            "<p>Schedule driving tests, record results, and track student progress.</p>" +
-                            "<div class='card-stats'><span class='stat-badge'>Upcoming Tests</span></div>" +
-                            "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/tests'>Access Portal <i class='fas fa-arrow-right'></i></a></div>" +
-                            "</div>" +
-
-                            "</div>";
-
+            cards = "<div class='cards-grid'>" +
+                    mc("fa-user-graduate",    "Student Management",   "Manage registrations, profiles and academic records.", ctx+"/students",    "#3b82f6") +
+                    mc("fa-chalkboard-teacher","Instructor Management","Track availability, qualifications and lessons.",       ctx+"/instructors", "#10b981") +
+                    mc("fa-car",              "Vehicle Management",   "Maintain fleet records and monitor vehicle usage.",     ctx+"/vehicles",    "#f59e0b") +
+                    mc("fa-calendar-check",   "Lesson Scheduling",    "Schedule and manage practical driving lessons.",        ctx+"/lessons",     "#06b6d4") +
+                    mc("fa-money-bill-wave",  "Payment Management",   "Track payments and generate financial reports.",        ctx+"/payments",    "#eab308") +
+                    mc("fa-clipboard-list",   "Test Management",      "Schedule tests, record results, track progress.",       ctx+"/tests",       "#ef4444") +
+                    "</div>";
         } else if (loggedIn) {
-            // STUDENT sees only their own relevant cards: lessons, tests, payments, logout
-            cards =
-                    "<div class='cards-grid'>" +
-
-                            "<div class='card lesson-card'>" +
-                            "<div class='card-icon'><i class='fas fa-calendar-check'></i></div>" +
-                            "<h3>My Lessons</h3>" +
-                            "<p>View your upcoming and past driving lessons.</p>" +
-                            "<div class='card-stats'><span class='stat-badge'>Upcoming Lessons</span></div>" +
-                            "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/lessons'>View Lessons <i class='fas fa-arrow-right'></i></a></div>" +
-                            "</div>" +
-
-                            "<div class='card test-card'>" +
-                            "<div class='card-icon'><i class='fas fa-clipboard-list'></i></div>" +
-                            "<h3>My Tests</h3>" +
-                            "<p>Check your driving test schedule and results.</p>" +
-                            "<div class='card-stats'><span class='stat-badge'>Upcoming Tests</span></div>" +
-                            "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/tests'>View Tests <i class='fas fa-arrow-right'></i></a></div>" +
-                            "</div>" +
-
-                            "<div class='card payment-card'>" +
-                            "<div class='card-icon'><i class='fas fa-money-bill-wave'></i></div>" +
-                            "<h3>My Payments</h3>" +
-                            "<p>View your payment history and outstanding balances.</p>" +
-                            "<div class='card-stats'><span class='stat-badge'>Payment History</span></div>" +
-                            "<div class='btn-row'><a class='btn primary' href='" + req.getContextPath() + "/payments'>View Payments <i class='fas fa-arrow-right'></i></a></div>" +
-                            "</div>" +
-
-                            "</div>";
-        } else {
-            String errorParam = req.getParameter("error");
-            String errorMsg = "";
-            if ("empty".equals(errorParam)) {
-                errorMsg = "<div class=\'login-error\'><i class=\'fas fa-exclamation-circle\'></i> Please enter username and password.</div>";
-            } else if ("invalid".equals(errorParam)) {
-                errorMsg = "<div class=\'login-error\'><i class=\'fas fa-exclamation-circle\'></i> Invalid username or password.</div>";
-            }
-
-            cards =
-                    "<div class=\'login-hero-wrap\'>" +
-                            "<div class=\'login-features\'>" +
-                            "<div class=\'login-tag\'><i class=\'fas fa-shield-alt\'></i> Secure &amp; Reliable Platform</div>" +
-                            "<h2 class=\'login-headline\'>Your Journey<br><span>Starts Here</span></h2>" +
-                            "<p class=\'login-sub\'>Roadify&#39;s comprehensive management system helps you streamline student registrations, instructor assignments, vehicle tracking, payments, and driving tests — all in one place.</p>" +
-                            "<div class=\'feat-list\'>" +
-                            "<div class=\'feat-item\'><i class=\'fas fa-users\'></i> Student &amp; Instructor Management</div>" +
-                            "<div class=\'feat-item\'><i class=\'fas fa-car\'></i> Vehicle Fleet Tracking</div>" +
-                            "<div class=\'feat-item\'><i class=\'fas fa-calendar-check\'></i> Lesson &amp; Test Scheduling</div>" +
-                            "<div class=\'feat-item\'><i class=\'fas fa-credit-card\'></i> Payment Processing</div>" +
-                            "</div>" +
-                            "</div>" +
-                            "<div class=\'login-form-card\'>" +
-                            "<div class=\'lfc-header\'>" +
-                            "<div class=\'lfc-avatar\'><i class=\'fas fa-user-circle\'></i></div>" +
-                            "<h3>Welcome Back</h3>" +
-                            "<p>Sign in to access your dashboard</p>" +
-                            "</div>" +
-                            errorMsg +
-                            "<form action=\'" + req.getContextPath() + "/login\' method=\'post\'>" +
-                            "<div class=\'lfc-group\'>" +
-                            "<label>Username</label>" +
-                            "<div class=\'lfc-input-wrap\'><i class=\'fas fa-user\'></i><input type=\'text\' name=\'username\' placeholder=\'Enter your username\' required></div>" +
-                            "</div>" +
-                            "<div class=\'lfc-group\'>" +
-                            "<label>Password</label>" +
-                            "<div class=\'lfc-input-wrap\'><i class=\'fas fa-lock\'></i><input type=\'password\' name=\'password\' placeholder=\'Enter your password\' required></div>" +
-                            "</div>" +
-                            "<button type=\'submit\' class=\'lfc-btn\'><i class=\'fas fa-sign-in-alt\'></i> Login to Dashboard</button>" +
-                            "</form>" +
-                            "</div>" +
-                            "</div>";
+            cards = "<div class='cards-grid cards-grid-3'>" +
+                    mc("fa-calendar-check",  "My Lessons",  "View your upcoming and past driving lessons.",       ctx+"/lessons",  "#06b6d4") +
+                    mc("fa-clipboard-list",  "My Tests",    "Check your driving test schedule and results.",      ctx+"/tests",    "#ef4444") +
+                    mc("fa-money-bill-wave", "My Payments", "View your payment history and outstanding fees.",    ctx+"/payments", "#eab308") +
+                    "</div>";
         }
 
-        String html =
-                "<!DOCTYPE html>" +
-                        "<html lang='en'>" +
-                        "<head>" +
-                        "<meta charset='UTF-8'>" +
-                        "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
-                        "<title>Driving School Management System</title>" +
-                        "<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'>" +
-                        "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap' rel='stylesheet'>" +
-                        "<style>" +
-                        "* {" +
-                        "  margin: 0;" +
-                        "  padding: 0;" +
-                        "  box-sizing: border-box;" +
-                        "}" +
-                        "" +
-                        "body {" +
-                        "  font-family: 'Inter', sans-serif;" +
-                        "  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" +
-                        "  height: 100vh;" +
-                        "  overflow: hidden;" +
-                        "}" +
-                        "" +
-                        "/* Main Layout - Fixed Header, Scrollable Content */" +
-                        ".app-container {" +
-                        "  height: 100vh;" +
-                        "  display: flex;" +
-                        "  flex-direction: column;" +
-                        "  overflow: hidden;" +
-                        "}" +
-                        "" +
-                        "/* Fixed Header Section */" +
-                        ".fixed-header {" +
-                        "  flex-shrink: 0;" +
-                        "  padding: 20px;" +
-                        "  background: transparent;" +
-                        "}" +
-                        "" +
-                        ".header {" +
-                        "  background: rgba(255,255,255,0.97);" +
-                        "  backdrop-filter: blur(16px);" +
-                        "  border-radius: 20px;" +
-                        "  padding: 16px 28px;" +
-                        "  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset;" +
-                        "  display: flex;" +
-                        "  justify-content: space-between;" +
-                        "  align-items: center;" +
-                        "  flex-wrap: wrap;" +
-                        "  gap: 16px;" +
-                        "  animation: slideDown 0.5s ease;" +
-                        "  border: 1px solid rgba(255,255,255,0.6);" +
-                        "}" +
-                        "" +
-                        "@keyframes slideDown {" +
-                        "  from {" +
-                        "    opacity: 0;" +
-                        "    transform: translateY(-30px);" +
-                        "  }" +
-                        "  to {" +
-                        "    opacity: 1;" +
-                        "    transform: translateY(0);" +
-                        "  }" +
-                        "}" +
-                        "" +
-                        ".brand {" +
-                        "  display: flex;" +
-                        "  align-items: center;" +
-                        "  gap: 15px;" +
-                        "}" +
-                        "" +
-                        ".logo {" +
-                        "  width: 50px;" +
-                        "  height: 50px;" +
-                        "  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" +
-                        "  border-radius: 15px;" +
-                        "  display: flex;" +
-                        "  align-items: center;" +
-                        "  justify-content: center;" +
-                        "}" +
-                        "" +
-                        ".logo i {" +
-                        "  font-size: 28px;" +
-                        "  color: white;" +
-                        "}" +
-                        "" +
-                        ".brand-info h1 {" +
-                        "  font-size: 20px;" +
-                        "  font-weight: 700;" +
-                        "  color: #1f2937;" +
-                        "  margin-bottom: 5px;" +
-                        "}" +
-                        "" +
-                        ".welcome {" +
-                        "  font-size: 14px;" +
-                        "  color: #4b5563;" +
-                        "  font-weight: 500;" +
-                        "}" +
-                        "" +
-                        ".welcome strong {" +
-                        "  color: #667eea;" +
-                        "  font-weight: 700;" +
-                        "}" +
-                        "" +
-                        ".system-badge {" +
-                        "  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" +
-                        "  color: white;" +
-                        "  padding: 8px 16px;" +
-                        "  border-radius: 20px;" +
-                        "  font-size: 12px;" +
-                        "  font-weight: 600;" +
-                        "}" +
-                        "" +
-                        "/* Scrollable Content Area */" +
-                        ".scrollable-content {" +
-                        "  flex: 1;" +
-                        "  overflow-y: auto;" +
-                        "  padding: 0 20px 20px 20px;" +
-                        "}" +
-                        "" +
-                        ".scrollable-content::-webkit-scrollbar {" +
-                        "  width: 8px;" +
-                        "}" +
-                        "" +
-                        ".scrollable-content::-webkit-scrollbar-track {" +
-                        "  background: rgba(255, 255, 255, 0.1);" +
-                        "  border-radius: 10px;" +
-                        "}" +
-                        "" +
-                        ".scrollable-content::-webkit-scrollbar-thumb {" +
-                        "  background: rgba(255, 255, 255, 0.3);" +
-                        "  border-radius: 10px;" +
-                        "}" +
-                        "" +
-                        ".scrollable-content::-webkit-scrollbar-thumb:hover {" +
-                        "  background: rgba(255, 255, 255, 0.5);" +
-                        "}" +
-                        "" +
-                        "/* Hero Section */" +
-                        ".hero {" +
-                        "  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);" +
-                        "  backdrop-filter: blur(10px);" +
-                        "  border-radius: 24px;" +
-                        "  padding: 40px;" +
-                        "  margin-bottom: 30px;" +
-                        "  text-align: center;" +
-                        "  animation: fadeInUp 0.6s ease;" +
-                        "}" +
-                        "" +
-                        "@keyframes fadeInUp {" +
-                        "  from {" +
-                        "    opacity: 0;" +
-                        "    transform: translateY(30px);" +
-                        "  }" +
-                        "  to {" +
-                        "    opacity: 1;" +
-                        "    transform: translateY(0);" +
-                        "  }" +
-                        "}" +
-                        "" +
-                        ".hero h2 {" +
-                        "  font-size: 36px;" +
-                        "  font-weight: 800;" +
-                        "  background: linear-gradient(135deg, #fff 0%, #e0e7ff 100%);" +
-                        "  -webkit-background-clip: text;" +
-                        "  -webkit-text-fill-color: transparent;" +
-                        "  background-clip: text;" +
-                        "  margin-bottom: 15px;" +
-                        "}" +
-                        "" +
-                        ".hero p {" +
-                        "  font-size: 16px;" +
-                        "  color: rgba(255, 255, 255, 0.9);" +
-                        "  max-width: 600px;" +
-                        "  margin: 0 auto;" +
-                        "  line-height: 1.6;" +
-                        "}" +
-                        "" +
-                        "/* Stats Section */" +
-                        ".stats-section {" +
-                        "  display: grid;" +
-                        "  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));" +
-                        "  gap: 20px;" +
-                        "  margin-bottom: 30px;" +
-                        "}" +
-                        "" +
-                        ".stat-card {" +
-                        "  background: rgba(255, 255, 255, 0.95);" +
-                        "  border-radius: 20px;" +
-                        "  padding: 20px;" +
-                        "  text-align: center;" +
-                        "  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);" +
-                        "  transition: transform 0.3s ease, box-shadow 0.3s ease;" +
-                        "}" +
-                        "" +
-                        ".stat-card:hover {" +
-                        "  transform: translateY(-5px);" +
-                        "  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);" +
-                        "}" +
-                        "" +
-                        ".stat-card i {" +
-                        "  font-size: 40px;" +
-                        "  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" +
-                        "  -webkit-background-clip: text;" +
-                        "  -webkit-text-fill-color: transparent;" +
-                        "  margin-bottom: 10px;" +
-                        "}" +
-                        "" +
-                        ".stat-number {" +
-                        "  font-size: 32px;" +
-                        "  font-weight: 800;" +
-                        "  color: #1f2937;" +
-                        "  margin-bottom: 5px;" +
-                        "}" +
-                        "" +
-                        ".stat-label {" +
-                        "  font-size: 14px;" +
-                        "  color: #6b7280;" +
-                        "}" +
-                        "" +
-                        "/* Cards Grid */" +
-                        ".cards-grid {" +
-                        "  display: grid;" +
-                        "  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));" +
-                        "  gap: 25px;" +
-                        "}" +
-                        "" +
-                        ".card {" +
-                        "  background: white;" +
-                        "  border-radius: 24px;" +
-                        "  padding: 25px;" +
-                        "  transition: all 0.3s ease;" +
-                        "  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);" +
-                        "  position: relative;" +
-                        "  overflow: hidden;" +
-                        "}" +
-                        "" +
-                        ".card:hover {" +
-                        "  transform: translateY(-8px);" +
-                        "  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);" +
-                        "}" +
-                        "" +
-                        ".card::before {" +
-                        "  content: '';" +
-                        "  position: absolute;" +
-                        "  top: 0;" +
-                        "  left: 0;" +
-                        "  right: 0;" +
-                        "  height: 4px;" +
-                        "  background: linear-gradient(90deg, #667eea, #764ba2);" +
-                        "  transform: scaleX(0);" +
-                        "  transition: transform 0.3s ease;" +
-                        "}" +
-                        "" +
-                        ".card:hover::before {" +
-                        "  transform: scaleX(1);" +
-                        "}" +
-                        "" +
-                        ".card-icon {" +
-                        "  width: 60px;" +
-                        "  height: 60px;" +
-                        "  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);" +
-                        "  border-radius: 15px;" +
-                        "  display: flex;" +
-                        "  align-items: center;" +
-                        "  justify-content: center;" +
-                        "  margin-bottom: 20px;" +
-                        "}" +
-                        "" +
-                        ".card-icon i {" +
-                        "  font-size: 28px;" +
-                        "  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" +
-                        "  -webkit-background-clip: text;" +
-                        "  -webkit-text-fill-color: transparent;" +
-                        "}" +
-                        "" +
-                        ".card h3 {" +
-                        "  font-size: 20px;" +
-                        "  font-weight: 700;" +
-                        "  margin-bottom: 12px;" +
-                        "  color: #1f2937;" +
-                        "}" +
-                        "" +
-                        ".card p {" +
-                        "  font-size: 14px;" +
-                        "  color: #6b7280;" +
-                        "  line-height: 1.5;" +
-                        "  margin-bottom: 20px;" +
-                        "}" +
-                        "" +
-                        ".card-stats {" +
-                        "  margin-bottom: 20px;" +
-                        "}" +
-                        "" +
-                        ".stat-badge {" +
-                        "  background: #f3f4f6;" +
-                        "  padding: 5px 12px;" +
-                        "  border-radius: 20px;" +
-                        "  font-size: 12px;" +
-                        "  color: #6b7280;" +
-                        "  display: inline-block;" +
-                        "}" +
-                        "" +
-                        ".btn-row {" +
-                        "  display: flex;" +
-                        "  justify-content: flex-end;" +
-                        "}" +
-                        "" +
-                        ".btn {" +
-                        "  display: inline-flex;" +
-                        "  align-items: center;" +
-                        "  gap: 8px;" +
-                        "  padding: 10px 20px;" +
-                        "  border-radius: 12px;" +
-                        "  font-weight: 600;" +
-                        "  font-size: 14px;" +
-                        "  text-decoration: none;" +
-                        "  transition: all 0.3s ease;" +
-                        "  cursor: pointer;" +
-                        "  border: none;" +
-                        "}" +
-                        "" +
-                        ".btn.primary {" +
-                        "  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" +
-                        "  color: white;" +
-                        "}" +
-                        "" +
-                        ".btn.primary:hover {" +
-                        "  transform: translateX(5px);" +
-                        "  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);" +
-                        "}" +
-                        "" +
-                        ".btn.secondary {" +
-                        "  background: #f3f4f6;" +
-                        "  color: #667eea;" +
-                        "}" +
-                        "" +
-                        ".btn.secondary:hover {" +
-                        "  background: #e5e7eb;" +
-                        "}" +
-                        "" +
-                        ".btn.danger {" +
-                        "  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);" +
-                        "  color: white;" +
-                        "}" +
-                        "" +
-                        ".btn.danger:hover {" +
-                        "  transform: translateX(5px);" +
-                        "  box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);" +
-                        "}" +
-                        "" +
-                        "/* Footer */" +
-                        ".footer {" +
-                        "  margin-top: 30px;" +
-                        "  text-align: center;" +
-                        "  padding: 20px;" +
-                        "  background: rgba(255, 255, 255, 0.1);" +
-                        "  backdrop-filter: blur(10px);" +
-                        "  border-radius: 20px;" +
-                        "  color: rgba(255, 255, 255, 0.9);" +
-                        "  font-size: 13px;" +
-                        "}" +
-                        "" +
-                        "/* Login Hero Layout */" +
-                        ".login-hero-wrap {" +
-                        "  display: flex;" +
-                        "  align-items: center;" +
-                        "  gap: 60px;" +
-                        "  padding: 20px 0 40px 0;" +
-                        "}" +
-                        ".login-features {" +
-                        "  flex: 1;" +
-                        "  color: white;" +
-                        "}" +
-                        ".login-tag {" +
-                        "  display: inline-flex;" +
-                        "  align-items: center;" +
-                        "  gap: 8px;" +
-                        "  background: rgba(255,255,255,0.15);" +
-                        "  border: 1px solid rgba(255,255,255,0.25);" +
-                        "  color: white;" +
-                        "  padding: 6px 16px;" +
-                        "  border-radius: 20px;" +
-                        "  font-size: 13px;" +
-                        "  font-weight: 600;" +
-                        "  margin-bottom: 24px;" +
-                        "}" +
-                        ".login-headline {" +
-                        "  font-size: 48px !important;" +
-                        "  font-weight: 800 !important;" +
-                        "  line-height: 1.1 !important;" +
-                        "  margin-bottom: 20px !important;" +
-                        "  -webkit-text-fill-color: white !important;" +
-                        "  background: none !important;" +
-                        "}" +
-                        ".login-headline span {" +
-                        "  color: #e9d5ff;" +
-                        "  -webkit-text-fill-color: #e9d5ff;" +
-                        "}" +
-                        ".login-sub {" +
-                        "  font-size: 16px;" +
-                        "  line-height: 1.7;" +
-                        "  color: rgba(255,255,255,0.85);" +
-                        "  margin-bottom: 32px;" +
-                        "}" +
-                        ".feat-list {" +
-                        "  display: flex;" +
-                        "  flex-direction: column;" +
-                        "  gap: 12px;" +
-                        "}" +
-                        ".feat-item {" +
-                        "  display: flex;" +
-                        "  align-items: center;" +
-                        "  gap: 12px;" +
-                        "  color: rgba(255,255,255,0.9);" +
-                        "  font-size: 15px;" +
-                        "  font-weight: 500;" +
-                        "}" +
-                        ".feat-item i {" +
-                        "  width: 34px;" +
-                        "  height: 34px;" +
-                        "  background: rgba(255,255,255,0.15);" +
-                        "  border-radius: 8px;" +
-                        "  display: flex;" +
-                        "  align-items: center;" +
-                        "  justify-content: center;" +
-                        "  font-size: 14px;" +
-                        "  flex-shrink: 0;" +
-                        "}" +
-                        ".login-form-card {" +
-                        "  background: white;" +
-                        "  border-radius: 24px;" +
-                        "  padding: 44px 40px;" +
-                        "  width: 400px;" +
-                        "  flex-shrink: 0;" +
-                        "  box-shadow: 0 24px 64px rgba(0,0,0,0.25);" +
-                        "}" +
-                        ".lfc-header {" +
-                        "  text-align: center;" +
-                        "  margin-bottom: 28px;" +
-                        "}" +
-                        ".lfc-avatar {" +
-                        "  width: 64px;" +
-                        "  height: 64px;" +
-                        "  background: linear-gradient(135deg, #667eea, #764ba2);" +
-                        "  border-radius: 18px;" +
-                        "  display: inline-flex;" +
-                        "  align-items: center;" +
-                        "  justify-content: center;" +
-                        "  font-size: 28px;" +
-                        "  color: white;" +
-                        "  margin-bottom: 14px;" +
-                        "}" +
-                        ".lfc-header h3 {" +
-                        "  font-size: 22px;" +
-                        "  font-weight: 800;" +
-                        "  color: #1f2937;" +
-                        "  margin-bottom: 4px;" +
-                        "}" +
-                        ".lfc-header p {" +
-                        "  color: #6b7280;" +
-                        "  font-size: 14px;" +
-                        "  margin-bottom: 0;" +
-                        "}" +
-                        ".login-error {" +
-                        "  background: #fee2e2;" +
-                        "  color: #991b1b;" +
-                        "  border: 1px solid #fca5a5;" +
-                        "  padding: 10px 14px;" +
-                        "  border-radius: 10px;" +
-                        "  font-size: 13px;" +
-                        "  margin-bottom: 18px;" +
-                        "  display: flex;" +
-                        "  align-items: center;" +
-                        "  gap: 8px;" +
-                        "}" +
-                        ".lfc-group {" +
-                        "  margin-bottom: 16px;" +
-                        "}" +
-                        ".lfc-group label {" +
-                        "  display: block;" +
-                        "  font-size: 13px;" +
-                        "  font-weight: 600;" +
-                        "  color: #374151;" +
-                        "  margin-bottom: 7px;" +
-                        "}" +
-                        ".lfc-input-wrap {" +
-                        "  position: relative;" +
-                        "}" +
-                        ".lfc-input-wrap i {" +
-                        "  position: absolute;" +
-                        "  left: 13px;" +
-                        "  top: 50%;" +
-                        "  transform: translateY(-50%);" +
-                        "  color: #9ca3af;" +
-                        "  font-size: 14px;" +
-                        "}" +
-                        ".lfc-input-wrap input {" +
-                        "  width: 100%;" +
-                        "  padding: 11px 14px 11px 38px;" +
-                        "  border: 2px solid #e5e7eb;" +
-                        "  border-radius: 11px;" +
-                        "  font-size: 14px;" +
-                        "  font-family: inherit;" +
-                        "  color: #1f2937;" +
-                        "  transition: border-color 0.2s;" +
-                        "}" +
-                        ".lfc-input-wrap input:focus {" +
-                        "  outline: none;" +
-                        "  border-color: #667eea;" +
-                        "}" +
-                        ".lfc-btn {" +
-                        "  width: 100%;" +
-                        "  margin-top: 8px;" +
-                        "  padding: 13px;" +
-                        "  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" +
-                        "  color: white;" +
-                        "  border: none;" +
-                        "  border-radius: 12px;" +
-                        "  font-size: 15px;" +
-                        "  font-weight: 700;" +
-                        "  cursor: pointer;" +
-                        "  font-family: inherit;" +
-                        "  display: flex;" +
-                        "  align-items: center;" +
-                        "  justify-content: center;" +
-                        "  gap: 8px;" +
-                        "  transition: opacity 0.2s, transform 0.1s;" +
-                        "}" +
-                        ".lfc-btn:hover { opacity: 0.9; transform: translateY(-1px); }" +
-                        "@media (max-width: 900px) {" +
-                        "  .login-hero-wrap { flex-direction: column; gap: 30px; }" +
-                        "  .login-form-card { width: 100%; max-width: 420px; }" +
-                        "  .login-headline { font-size: 32px !important; text-align: center; }" +
-                        "  .login-features { text-align: center; }" +
-                        "  .feat-list { align-items: center; }" +
-                        "}" +
-                        "" +
-                        "/* Responsive */" +
-                        "@media (max-width: 768px) {" +
-                        "  .fixed-header {" +
-                        "    padding: 15px;" +
-                        "  }" +
-                        "  .header {" +
-                        "    flex-direction: column;" +
-                        "    text-align: center;" +
-                        "  }" +
-                        "  .hero {" +
-                        "    padding: 30px 20px;" +
-                        "  }" +
-                        "  .hero h2 {" +
-                        "    font-size: 28px;" +
-                        "  }" +
-                        "  .cards-grid {" +
-                        "    grid-template-columns: 1fr;" +
-                        "  }" +
-                        "  .scrollable-content {" +
-                        "    padding: 0 15px 15px 15px;" +
-                        "  }" +
-                        "}" +
-                        "@keyframes floatUp {" +"  0% { opacity:0; transform: translateY(40px); }" +"  100% { opacity:1; transform: translateY(0); }" +"}" +"@keyframes fadeInLeft {" +"  0% { opacity:0; transform: translateX(-40px); }" +"  100% { opacity:1; transform: translateX(0); }" +"}" +"@keyframes fadeInRight {" +"  0% { opacity:0; transform: translateX(40px); }" +"  100% { opacity:1; transform: translateX(0); }" +"}" +"@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(102,126,234,0.4); } 50% { box-shadow: 0 0 0 12px rgba(102,126,234,0); } }" +".login-hero-wrap { animation: floatUp 0.7s ease both; }" +".login-features { animation: fadeInLeft 0.8s ease 0.1s both; }" +".login-form-card { animation: fadeInRight 0.8s ease 0.2s both; transition: box-shadow 0.3s; }" +".login-form-card:hover { box-shadow: 0 28px 72px rgba(0,0,0,0.3); }" +".lfc-avatar { animation: pulse 2.5s infinite 1s; }" +".feat-item { transition: transform 0.2s ease; }" +".feat-item:hover { transform: translateX(6px); }" +".logo { width:52px; height:52px; background: linear-gradient(135deg,#667eea,#764ba2); border-radius:16px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(102,126,234,0.4); transition: transform 0.3s; }" +".logo:hover { transform: rotate(10deg) scale(1.1); }" +".logo i { font-size:26px; color:white; }" +".brand-info h1 { font-size:22px; font-weight:800; letter-spacing:-0.5px; }" +".cards-grid .card:nth-child(1){animation:floatUp 0.5s 0.05s ease both;}" +".cards-grid .card:nth-child(2){animation:floatUp 0.5s 0.1s ease both;}" +".cards-grid .card:nth-child(3){animation:floatUp 0.5s 0.15s ease both;}" +".cards-grid .card:nth-child(4){animation:floatUp 0.5s 0.2s ease both;}" +".cards-grid .card:nth-child(5){animation:floatUp 0.5s 0.25s ease both;}" +".cards-grid .card:nth-child(6){animation:floatUp 0.5s 0.3s ease both;}" +".cards-grid .card:nth-child(7){animation:floatUp 0.5s 0.35s ease both;}" +".stats-section .stat-card:nth-child(1){animation:floatUp 0.5s 0.05s ease both;}" +".stats-section .stat-card:nth-child(2){animation:floatUp 0.5s 0.12s ease both;}" +".stats-section .stat-card:nth-child(3){animation:floatUp 0.5s 0.19s ease both;}" +".stats-section .stat-card:nth-child(4){animation:floatUp 0.5s 0.26s ease both;}" +".lfc-btn:hover { box-shadow: 0 8px 24px rgba(102,126,234,0.45); opacity:0.92; transform:translateY(-1px); }" +
-                        ".welcome-row { display:flex; align-items:center; gap:10px; }" +".user-avatar { width:36px; height:36px; background:linear-gradient(135deg,#667eea,#764ba2); border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:15px; flex-shrink:0; box-shadow:0 2px 8px rgba(102,126,234,0.4); }" +
-                        ".header-logout-btn {" +"  display: inline-flex; align-items: center; gap: 8px;" +"  padding: 10px 20px;" +"  background: linear-gradient(135deg, #ef4444, #dc2626);" +"  color: white;" +"  text-decoration: none;" +"  border-radius: 12px;" +"  font-weight: 600;" +"  font-size: 14px;" +"  transition: all 0.2s ease;" +"  box-shadow: 0 3px 12px rgba(239,68,68,0.3);" +"}" +".header-logout-btn:hover {" +"  transform: translateY(-2px);" +"  box-shadow: 0 6px 20px rgba(239,68,68,0.4);" +"  opacity: 0.92;" +"}" +
-                        "</style>" +
-                        "</head>" +
-                        "<body>" +
-                        "<div class='app-container'>" +
-                        "" +
-                        "<!-- Fixed Header -->" +
-                        "<div class='fixed-header'>" +
-                        "<header class='header'>" +
-                        "<div class='brand'>" +
-                        "<div class='logo'><i class='fas fa-road'></i></div>" +
-                        "<div class='brand-info'>" +
-                        "<h1>Road<span style=\"color:#667eea\">ify</span></h1>" +
-                        welcomeLine +
-                        "</div>" +
-                        "</div>" +
-                        (loggedIn ? "<a href='" + req.getContextPath() + "/logout' class='header-logout-btn'><i class='fas fa-sign-out-alt'></i> Logout</a>" : "") +
-                        "</header>" +
-                        "</div>" +
-                        "" +
-                        "<!-- Scrollable Content -->" +
-                        "<div class='scrollable-content'>" +
-                        "" +
-                        "<!-- Hero Section (logged in only) -->" +
-                        (loggedIn ? "<section class='hero'><h2>Welcome to Your Dashboard</h2><p>Manage all aspects of your driving school from one central dashboard. Track students, instructors, vehicles, and more.</p></section>" : "") +
-                        "" +
-                        "<!-- Stats Section (only for logged in users) -->" +
-                        (loggedIn ?
-                                "<div class='stats-section'>" +
-                                "<div class='stat-card'>" +
-                                "<i class='fas fa-users'></i>" +
-                                "<div class='stat-number'>" + studentDAO.getAllStudents().size() + "</div>" +
-                                "<div class='stat-label'>Total Students</div>" +
-                                "</div>" +
-                                "<div class='stat-card'>" +
-                                "<i class='fas fa-chalkboard-teacher'></i>" +
-                                "<div class='stat-number'>" + instructorDAO.getAllActiveInstructors().size() + "</div>" +
-                                "<div class='stat-label'>Active Instructors</div>" +
-                                "</div>" +
-                                "<div class='stat-card'>" +
-                                "<i class='fas fa-car'></i>" +
-                                "<div class='stat-number'>" + vehicleDAO.getAllActiveVehicles().size() + "</div>" +
-                                "<div class='stat-label'>Active Vehicles</div>" +
-                                "</div>" +
-                                "<div class='stat-card'>" +
-                                "<i class='fas fa-calendar-check'></i>" +
-                                "<div class='stat-number'>" + lessonDAO.getLessonsByDate(java.time.LocalDate.now().toString()).size() + "</div>" +
-                                "<div class='stat-label'>Today's Lessons</div>" +
-                                "</div>" +
-                                "</div>" : "") +
-                        "" +
-                        "<!-- Cards Grid -->" +
-                        cards +
-                        "" +
-                        "<!-- Footer -->" +
-                        "<footer class='footer'>" +
-                        "<p>© 2024 Roadify - Driving School Management System | All Rights Reserved</p>" +
-                        "<p style='margin-top: 10px; font-size: 12px;'><i class='fas fa-shield-alt'></i> Secure & Reliable | <i class='fas fa-chart-line'></i> Real-time Updates | <i class='fas fa-headset'></i> 24/7 Support</p>" +
-                        "</footer>" +
-                        "</div>" +
-                        "</div>" +
-                        "</body>" +
-                        "</html>";
+        resp.getWriter().println(buildHTML(ctx, loggedIn, username, role, initial,
+                totalStudents, totalInstructors, totalVehicles, todayLessons, errorMsg, cards));
+    }
 
-        resp.getWriter().println(html);
+    // ── Management card ──────────────────────────────────────────────────────
+    private String mc(String icon, String title, String desc, String url, String color) {
+        return "<a href='" + url + "' class='mod-card' style='--cc:" + color + "'>" +
+                "<div class='mod-ico'><i class='fas " + icon + "'></i></div>" +
+                "<div class='mod-body'><h3>" + title + "</h3><p>" + desc + "</p></div>" +
+                "<div class='mod-arr'><i class='fas fa-arrow-right'></i></div>" +
+                "</a>";
+    }
+
+    // ── Full HTML shell ───────────────────────────────────────────────────────
+    private String buildHTML(String ctx, boolean loggedIn, String username, String role, String initial,
+                             int students, int instructors, int vehicles, int lessons,
+                             String errorMsg, String cards) {
+
+        // Animated steering wheel logo
+        String svgLogo =
+                "<svg class='brand-logo-svg' width='44' height='44' viewBox='0 0 44 44' fill='none' xmlns='http://www.w3.org/2000/svg'>" +
+                        "<defs>" +
+                        "<linearGradient id='lgg' x1='0' y1='0' x2='44' y2='44'>" +
+                        "<stop offset='0%' stop-color='#f59e0b'/><stop offset='100%' stop-color='#ef4444'/>" +
+                        "</linearGradient>" +
+                        "<filter id='glow'><feGaussianBlur stdDeviation='1' result='b'/>" +
+                        "<feMerge><feMergeNode in='b'/><feMergeNode in='SourceGraphic'/></feMerge></filter>" +
+                        "</defs>" +
+                        "<rect width='44' height='44' rx='12' fill='url(#lgg)'/>" +
+                        "<rect width='44' height='44' rx='12' fill='rgba(0,0,0,0.12)'/>" +
+                        "<circle cx='22' cy='22' r='13' stroke='white' stroke-width='2.5' fill='none' opacity='0.95' filter='url(#glow)'/>" +
+                        "<line x1='22' y1='9' x2='22' y2='22' stroke='white' stroke-width='2' stroke-linecap='round'/>" +
+                        "<line x1='22' y1='22' x2='11' y2='29' stroke='white' stroke-width='2' stroke-linecap='round'/>" +
+                        "<line x1='22' y1='22' x2='33' y2='29' stroke='white' stroke-width='2' stroke-linecap='round'/>" +
+                        "<circle cx='22' cy='22' r='3.5' fill='white'/>" +
+                        "<circle cx='22' cy='22' r='1.8' fill='#f59e0b'/>" +
+                        "<line x1='3' y1='17' x2='7' y2='17' stroke='white' stroke-width='1.5' stroke-linecap='round' opacity='0.35'/>" +
+                        "<line x1='2' y1='22' x2='6' y2='22' stroke='white' stroke-width='1.5' stroke-linecap='round' opacity='0.25'/>" +
+                        "<line x1='3' y1='27' x2='7' y2='27' stroke='white' stroke-width='1.5' stroke-linecap='round' opacity='0.35'/>" +
+                        "</svg>";
+
+        // ── Nav links ──
+        String navLinks = "";
+        if (loggedIn) {
+            if ("admin".equalsIgnoreCase(role)) {
+                navLinks =
+                        "<a href='" + ctx + "/students'    class='nl'><i class='fas fa-user-graduate'></i><span>Students</span></a>" +
+                                "<a href='" + ctx + "/instructors' class='nl'><i class='fas fa-chalkboard-teacher'></i><span>Instructors</span></a>" +
+                                "<a href='" + ctx + "/vehicles'    class='nl'><i class='fas fa-car'></i><span>Vehicles</span></a>" +
+                                "<a href='" + ctx + "/lessons'     class='nl'><i class='fas fa-calendar-check'></i><span>Lessons</span></a>" +
+                                "<a href='" + ctx + "/tests'       class='nl'><i class='fas fa-clipboard-list'></i><span>Tests</span></a>" +
+                                "<a href='" + ctx + "/payments'    class='nl'><i class='fas fa-money-bill-wave'></i><span>Payments</span></a>";
+            } else {
+                navLinks =
+                        "<a href='" + ctx + "/lessons'  class='nl'><i class='fas fa-calendar-check'></i><span>My Lessons</span></a>" +
+                                "<a href='" + ctx + "/tests'    class='nl'><i class='fas fa-clipboard-list'></i><span>My Tests</span></a>" +
+                                "<a href='" + ctx + "/payments' class='nl'><i class='fas fa-money-bill-wave'></i><span>My Payments</span></a>";
+            }
+        }
+
+        String userChip = loggedIn ?
+                "<div class='u-chip'>" +
+                "<div class='u-av'>" + escape(initial) + "</div>" +
+                "<div class='u-info'>" +
+                "<div class='u-role'>" + ("admin".equalsIgnoreCase(role) ? "Administrator" : "instructor".equalsIgnoreCase(role) ? "Instructor" : "Student") + "</div>" +
+                "<div class='u-name'>" + escape(username) + "</div>" +
+                "</div></div>" +
+                "<a href='" + ctx + "/logout' class='logout-btn'><i class='fas fa-sign-out-alt'></i> Logout</a>"
+                : "";
+
+        String topbar =
+                "<header class='topbar'>" +
+                        "<a href='" + ctx + "/home' class='brand'>" +
+                        svgLogo +
+                        "<div><div class='brand-name'>Drive<span>Master</span></div><div class='brand-sub'>Driving Academy</div></div>" +
+                        "</a>" +
+                        (loggedIn ? "<nav class='nav-links'>" + navLinks + "</nav>" : "") +
+                        "<div class='hdr-right'>" +
+                        "<button class='theme-btn' id='themeBtn' title='Toggle theme'><i class='fas fa-moon' id='themeIcon'></i></button>" +
+                        userChip +
+                        "</div>" +
+                        "</header>";
+
+        String body = loggedIn
+                ? getDash(role, username, students, instructors, vehicles, lessons, cards)
+                : getLogin(ctx, errorMsg);
+
+        return "<!DOCTYPE html><html lang='en' data-theme='dark'><head>" +
+                "<meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1.0'>" +
+                "<title>DriveMaster Academy</title>" +
+                "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap' rel='stylesheet'>" +
+                "<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'>" +
+                "<style>" + css() + "</style></head><body>" +
+                topbar + body +
+                "<footer class='footer'><p>&copy; 2025 DriveMaster Academy &mdash; Sri Lanka's Premier Driving School</p></footer>" +
+                themeScript() +
+                "</body></html>";
+    }
+
+    // ── Dashboard ─────────────────────────────────────────────────────────────
+    private String getDash(String role, String username, int s, int i, int v, int l, String cards) {
+        String stats = "";
+        if ("admin".equalsIgnoreCase(role)) {
+            stats = "<div class='stats-row'>" +
+                    statCard("fa-user-graduate",     "Total Students",    s, "#3b82f6") +
+                    statCard("fa-chalkboard-teacher","Active Instructors", i, "#10b981") +
+                    statCard("fa-car",               "Active Vehicles",   v, "#f59e0b") +
+                    statCard("fa-calendar-check",    "Today's Lessons",   l, "#8b5cf6") +
+                    "</div>";
+        }
+
+        return "<div class='dash-wrap'>" +
+                "<div class='dash-hero'>" +
+                "<img class='dh-bg' " +
+                "src='https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1400&q=80&auto=format&fit=crop' " +
+                "alt='driving' " +
+                "onerror=\"this.src='https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=1400&q=80'\"/>" +
+                "<div class='dh-overlay'></div>" +
+                "<div class='dh-content'>" +
+                "<div class='dh-badge'><i class='fas fa-circle-check'></i> Welcome back</div>" +
+                "<div class='dh-title'>Hello, <span>" + escape(username) + "</span> \uD83D\uDC4B</div>" +
+                "<div class='dh-sub'>" +
+                ("admin".equalsIgnoreCase(role)
+                        ? "You have full admin access. Manage your entire driving academy from here."
+                        : "Your personal dashboard. Track your lessons, tests and payments.") +
+                "</div>" +
+                "</div>" +
+                "</div>" +
+                stats +
+                (!"".equals(cards) ? "<div class='sec-lbl'><i class='fas fa-grid-2'></i> Management Modules</div>" + cards : "") +
+                "</div>" +
+                "<script>document.querySelectorAll('.sv').forEach(function(el){" +
+                "var t=+el.dataset.t||0,n=0,sp=Math.max(1,Math.ceil(t/40));" +
+                "var tm=setInterval(function(){n=Math.min(n+sp,t);el.textContent=n;if(n>=t)clearInterval(tm);},40);});</script>";
+    }
+
+    private String statCard(String icon, String label, int val, String color) {
+        return "<div class='stat' style='--sc:" + color + "'>" +
+                "<div class='stat-top'>" +
+                "<div class='si'><i class='fas " + icon + "'></i></div>" +
+                "<div class='sv' data-t='" + val + "'>0</div>" +
+                "</div>" +
+                "<div class='sl'>" + label + "</div>" +
+                "</div>";
+    }
+
+    // ── Login ─────────────────────────────────────────────────────────────────
+    private String getLogin(String ctx, String errorMsg) {
+        String loginSvg =
+                "<svg class='lc-logo-svg' width='60' height='60' viewBox='0 0 44 44' fill='none'>" +
+                        "<defs><linearGradient id='lg2' x1='0' y1='0' x2='44' y2='44'>" +
+                        "<stop offset='0%' stop-color='#f59e0b'/><stop offset='100%' stop-color='#ef4444'/>" +
+                        "</linearGradient>" +
+                        "<filter id='glow2'><feGaussianBlur stdDeviation='1' result='b'/>" +
+                        "<feMerge><feMergeNode in='b'/><feMergeNode in='SourceGraphic'/></feMerge></filter></defs>" +
+                        "<rect width='44' height='44' rx='12' fill='url(#lg2)'/>" +
+                        "<rect width='44' height='44' rx='12' fill='rgba(0,0,0,0.12)'/>" +
+                        "<circle cx='22' cy='22' r='13' stroke='white' stroke-width='2.5' fill='none' opacity='0.95' filter='url(#glow2)'/>" +
+                        "<line x1='22' y1='9' x2='22' y2='22' stroke='white' stroke-width='2' stroke-linecap='round'/>" +
+                        "<line x1='22' y1='22' x2='11' y2='29' stroke='white' stroke-width='2' stroke-linecap='round'/>" +
+                        "<line x1='22' y1='22' x2='33' y2='29' stroke='white' stroke-width='2' stroke-linecap='round'/>" +
+                        "<circle cx='22' cy='22' r='3.5' fill='white'/>" +
+                        "<circle cx='22' cy='22' r='1.8' fill='#f59e0b'/>" +
+                        "</svg>";
+
+        return "<div class='login-page'>" +
+                // ── LEFT panel ──
+                "<div class='lp-left'>" +
+                "<div class='lp-slider'>" +
+                "<img class='lp-slide active' src='https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=1200&q=85&auto=format&fit=crop' alt='car1'/>" +
+                "<img class='lp-slide' src='https://images.unsplash.com/photo-1553440569-bcc63803a83d?w=1200&q=85&auto=format&fit=crop' alt='car2'/>" +
+                "<img class='lp-slide' src='https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1200&q=85&auto=format&fit=crop' alt='car3'/>" +
+                "</div>" +
+                "<div class='lp-overlay'></div>" +
+                "<div class='lp-content'>" +
+                "<div class='lp-badge'><i class='fas fa-star'></i> Sri Lanka's #1 Driving Academy</div>" +
+                "<h1 class='lp-title'>Learn to Drive.<br>Drive with <em>Confidence.</em></h1>" +
+                "<p class='lp-desc'>Professional driving lessons with certified instructors. Your journey to becoming a safe, confident driver starts here.</p>" +
+                "<div class='lp-feats'>" +
+                feat("fa-circle-check", "Certified &amp; Experienced Instructors") +
+                feat("fa-circle-check", "Modern Training Vehicles") +
+                feat("fa-circle-check", "Flexible Class Scheduling") +
+                feat("fa-circle-check", "Theory &amp; Practical Training") +
+                "</div>" +
+                "<div class='lp-thumbs'>" +
+                thumb("https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=200&q=70&auto=format&fit=crop", "Practical") +
+                thumb("https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=200&q=70&auto=format&fit=crop", "Highway") +
+                thumb("https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=200&q=70&auto=format&fit=crop", "Training") +
+                "</div>" +
+                "</div>" +
+                "</div>" +
+                // ── RIGHT panel ──
+                "<div class='lp-right'>" +
+                "<div class='login-card'>" +
+                "<div class='lc-top'>" + loginSvg +
+                "<h2>Sign In</h2><p>Access your academy account</p>" +
+                "</div>" +
+                errorMsg +
+                "<form action='" + ctx + "/login' method='post' class='lc-form'>" +
+                "<div class='lc-field'><label>Username</label>" +
+                "<div class='lc-iw'><i class='fas fa-user'></i><input type='text' name='username' placeholder='Enter your username' required></div></div>" +
+                "<div class='lc-field'><label>Password</label>" +
+                "<div class='lc-iw'><i class='fas fa-lock'></i><input type='password' name='password' placeholder='Enter your password' required></div></div>" +
+                "<button type='submit' class='lc-btn'>Sign In <i class='fas fa-arrow-right'></i></button>" +
+                "</form>" +
+                "</div>" +
+                "</div>" +
+                "</div>" +
+                // Slideshow JS
+                "<script>(function(){" +
+                "var slides=document.querySelectorAll('.lp-slide'),idx=0;" +
+                "if(!slides.length)return;" +
+                "setInterval(function(){slides[idx].classList.remove('active');idx=(idx+1)%slides.length;slides[idx].classList.add('active');},5000);" +
+                "})();</script>";
+    }
+
+    private String feat(String icon, String text) {
+        return "<div class='lf'><i class='fas " + icon + "'></i> " + text + "</div>";
+    }
+
+    private String thumb(String url, String label) {
+        return "<div class='thumb-wrap'>" +
+                "<img src='" + url + "' alt='" + label + "' class='thumb' onerror=\"this.style.display='none'\">" +
+                "<div class='thumb-lbl'>" + label + "</div>" +
+                "</div>";
+    }
+
+    // ── Theme toggle script (runs immediately after body) ─────────────────────
+    private String themeScript() {
+        return "<script>(function(){" +
+                "var h=document.documentElement," +
+                "b=document.getElementById('themeBtn')," +
+                "ic=document.getElementById('themeIcon')," +
+                "t=localStorage.getItem('dm-theme')||'dark';" +
+                "h.setAttribute('data-theme',t);" +
+                "ic.className=t==='dark'?'fas fa-moon':'fas fa-sun';" +
+                "b.addEventListener('click',function(){" +
+                "var n=h.getAttribute('data-theme')==='dark'?'light':'dark';" +
+                "h.setAttribute('data-theme',n);" +
+                "localStorage.setItem('dm-theme',n);" +
+                "ic.className=n==='dark'?'fas fa-moon':'fas fa-sun';" +
+                "});" +
+                "})();</script>";
+    }
+
+    // ── CSS ───────────────────────────────────────────────────────────────────
+    private String css() {
+        return
+                // Design tokens
+                ":root{--bg:#05070d;--bg2:#08090f;--bg3:#0d1020;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.11);" +
+                        "--text:#ffffff;--text2:#8b93b8;--text3:#4a5278;--accent:#f59e0b;--accent2:#ef4444;" +
+                        "--blue:#3b82f6;--green:#10b981;--shadow:0 8px 32px rgba(0,0,0,0.4);--nav-h:62px}" +
+
+                        "[data-theme='light']{--bg:#f0f2fa;--bg2:#ffffff;--bg3:#e8eaf4;" +
+                        "--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);" +
+                        "--text:#0d0f1a;--text2:#4a5278;--text3:#9ba3c8;--shadow:0 8px 32px rgba(0,0,0,0.07)}" +
+
+                        "*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}" +
+                        "html,body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .25s,color .25s}" +
+
+                        // ── TOPBAR ──
+                        ".topbar{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:var(--nav-h);" +
+                        "background:rgba(3,4,8,.98);border-bottom:1px solid var(--border);" +
+                        "position:sticky;top:0;z-index:300;backdrop-filter:blur(22px);gap:12px}" +
+                        "[data-theme='light'] .topbar{background:rgba(255,255,255,.97)}" +
+
+                        ".brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0;cursor:pointer}" +
+                        ".brand-name{font-size:16px;font-weight:800;color:var(--text)}" +
+                        ".brand-name span{color:var(--accent)}" +
+                        ".brand-sub{font-size:8.5px;color:var(--text3);text-transform:uppercase;letter-spacing:2px}" +
+
+                        ".nav-links{display:flex;gap:2px;flex:1;justify-content:center}" +
+                        ".nl{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;" +
+                        "font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;transition:all .18s;white-space:nowrap}" +
+                        ".nl i{font-size:13px;width:14px;text-align:center}" +
+                        ".nl:hover{background:rgba(245,158,11,.09);color:var(--accent)}" +
+                        ".nl.active{background:rgba(245,158,11,.13);color:var(--accent);font-weight:600}" +
+
+                        ".hdr-right{display:flex;align-items:center;gap:9px;flex-shrink:0}" +
+
+                        ".theme-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border2);" +
+                        "background:var(--bg3);color:var(--text2);cursor:pointer;font-size:14px;" +
+                        "display:flex;align-items:center;justify-content:center;transition:all .2s}" +
+                        ".theme-btn:hover{color:var(--accent);border-color:rgba(245,158,11,.35)}" +
+
+                        ".u-chip{display:flex;align-items:center;gap:8px;background:#06080f;" +
+                        "border:1px solid var(--border2);border-radius:30px;padding:5px 14px 5px 5px}" +
+                        ".u-av{width:32px;height:32px;background:linear-gradient(135deg,var(--accent),var(--accent2));" +
+                        "border-radius:50%;display:flex;align-items:center;justify-content:center;" +
+                        "font-weight:700;font-size:13px;color:white;flex-shrink:0}" +
+                        ".u-role{font-size:9px;color:#f59e0b;text-transform:uppercase;letter-spacing:1.5px;font-weight:700}" +
+                        ".u-name{font-size:12px;font-weight:700;color:var(--text)}" +
+
+                        ".logout-btn{display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:10px;" +
+                        "background:linear-gradient(135deg,var(--accent2),#c21b1b);color:white;" +
+                        "text-decoration:none;font-size:12.5px;font-weight:600;transition:all .2s}" +
+                        ".logout-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(239,68,68,.35)}" +
+
+                        // ── DASHBOARD ──
+                        ".dash-wrap{background:var(--bg);padding:28px;min-height:calc(100vh - var(--nav-h))}" +
+
+                        ".dash-hero{position:relative;border-radius:20px;overflow:hidden;height:210px;" +
+                        "margin-bottom:24px;animation:fadeUp .6s ease both}" +
+                        ".dh-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;filter:brightness(.45)}" +
+                        ".dh-overlay{position:absolute;inset:0;background:linear-gradient(135deg,rgba(10,12,20,.88),rgba(245,158,11,.08))}" +
+                        ".dh-content{position:relative;z-index:2;padding:34px 38px;height:100%;display:flex;flex-direction:column;justify-content:center}" +
+                        ".dh-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(245,158,11,.13);" +
+                        "border:1px solid rgba(245,158,11,.3);color:var(--accent);border-radius:20px;" +
+                        "padding:4px 12px;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;width:fit-content}" +
+                        ".dh-title{font-size:30px;font-weight:800;color:#fff;margin-bottom:6px}" +
+                        ".dh-title span{color:var(--accent)}" +
+                        ".dh-sub{font-size:13px;color:rgba(255,255,255,.5);max-width:480px}" +
+
+                        // Stats
+                        ".stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px}" +
+                        ".stat{background:var(--bg2);border:1px solid var(--border);border-top:3px solid var(--sc);" +
+                        "border-radius:16px;padding:20px;transition:all .2s}" +
+                        ".stat:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,0,0,.3)}" +
+                        ".stat:nth-child(1){animation:fadeUp .5s .05s ease both}" +
+                        ".stat:nth-child(2){animation:fadeUp .5s .10s ease both}" +
+                        ".stat:nth-child(3){animation:fadeUp .5s .15s ease both}" +
+                        ".stat:nth-child(4){animation:fadeUp .5s .20s ease both}" +
+                        ".stat-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}" +
+                        ".si{width:40px;height:40px;border-radius:11px;background:color-mix(in srgb,var(--sc) 14%,transparent);" +
+                        "display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--sc)}" +
+                        ".sv{font-size:34px;font-weight:800;color:var(--text);line-height:1}" +
+                        ".sl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px}" +
+
+                        // Module cards
+                        ".sec-lbl{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;" +
+                        "letter-spacing:2px;margin-bottom:14px;display:flex;align-items:center;gap:7px}" +
+                        ".cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}" +
+                        ".cards-grid-3{grid-template-columns:repeat(3,1fr)}" +
+                        ".mod-card{display:flex;align-items:center;gap:14px;background:var(--bg2);" +
+                        "border:1px solid var(--border);border-radius:16px;padding:18px;" +
+                        "text-decoration:none;color:var(--text);transition:all .25s}" +
+                        ".mod-card:hover{transform:translateY(-4px);border-color:var(--cc);" +
+                        "box-shadow:0 12px 32px rgba(0,0,0,.35)}" +
+                        ".mod-ico{width:46px;height:46px;border-radius:13px;" +
+                        "background:color-mix(in srgb,var(--cc) 13%,transparent);" +
+                        "display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--cc);flex-shrink:0}" +
+                        ".mod-body{flex:1}" +
+                        ".mod-body h3{font-size:13.5px;font-weight:700;margin-bottom:3px;color:var(--text)}" +
+                        ".mod-body p{font-size:11.5px;color:var(--text3);line-height:1.45}" +
+                        ".mod-arr{color:var(--text3);font-size:13px;transition:all .2s}" +
+                        ".mod-card:hover .mod-arr{color:var(--cc);transform:translateX(4px)}" +
+                        ".mod-card:nth-child(1){animation:fadeUp .5s .05s both}" +
+                        ".mod-card:nth-child(2){animation:fadeUp .5s .10s both}" +
+                        ".mod-card:nth-child(3){animation:fadeUp .5s .15s both}" +
+                        ".mod-card:nth-child(4){animation:fadeUp .5s .20s both}" +
+                        ".mod-card:nth-child(5){animation:fadeUp .5s .25s both}" +
+                        ".mod-card:nth-child(6){animation:fadeUp .5s .30s both}" +
+
+                        // ── LOGIN ──
+                        ".login-page{display:flex;min-height:calc(100vh - var(--nav-h))}" +
+                        ".lp-left{flex:1.4;position:relative;overflow:hidden;min-height:500px}" +
+                        ".lp-slider{position:absolute;inset:0}" +
+                        ".lp-slide{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;" +
+                        "opacity:0;transition:opacity 1.3s ease,transform 9s ease;transform:scale(1.06)}" +
+                        ".lp-slide.active{opacity:1;transform:scale(1.0)}" +
+                        ".lp-overlay{position:absolute;inset:0;background:linear-gradient(120deg,rgba(5,7,20,.85) 0%,rgba(10,12,20,.6) 60%,rgba(245,158,11,.07) 100%)}" +
+                        ".lp-content{position:relative;z-index:2;padding:56px 50px;height:100%;display:flex;flex-direction:column;justify-content:center}" +
+                        ".lp-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(245,158,11,.12);" +
+                        "border:1px solid rgba(245,158,11,.28);color:var(--accent);border-radius:30px;" +
+                        "padding:5px 14px;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;" +
+                        "margin-bottom:20px;width:fit-content}" +
+                        ".lp-title{font-size:52px;font-weight:800;color:#fff;line-height:1.1;margin-bottom:14px;text-shadow:0 2px 24px rgba(0,0,0,.5)}" +
+                        ".lp-title em{color:var(--accent);font-style:normal}" +
+                        ".lp-desc{font-size:14px;color:rgba(255,255,255,.55);line-height:1.75;margin-bottom:26px;max-width:430px}" +
+                        ".lp-feats{display:flex;flex-direction:column;gap:10px;margin-bottom:30px}" +
+                        ".lf{display:flex;align-items:center;gap:9px;font-size:13px;color:rgba(255,255,255,.78)}" +
+                        ".lf i{color:var(--green);font-size:14px;flex-shrink:0}" +
+                        ".lp-thumbs{display:flex;gap:12px}" +
+                        ".thumb-wrap{position:relative;cursor:pointer}" +
+                        ".thumb{width:112px;height:74px;object-fit:cover;border-radius:12px;" +
+                        "border:2px solid rgba(255,255,255,.1);transition:all .3s;display:block}" +
+                        ".thumb:hover{transform:translateY(-5px) scale(1.04);border-color:var(--accent);box-shadow:0 8px 24px rgba(0,0,0,.5)}" +
+                        ".thumb-lbl{position:absolute;bottom:5px;left:0;right:0;text-align:center;" +
+                        "font-size:9px;font-weight:700;color:rgba(255,255,255,.9);text-transform:uppercase;" +
+                        "letter-spacing:1px;text-shadow:0 1px 4px rgba(0,0,0,.8)}" +
+
+                        ".lp-right{width:430px;flex-shrink:0;background:var(--bg2);" +
+                        "display:flex;align-items:center;justify-content:center;padding:36px;" +
+                        "border-left:1px solid var(--border)}" +
+                        ".login-card{width:100%;border-radius:20px;overflow:hidden;animation:fadeUp .7s ease both;" +
+                        "border:1px solid var(--border);box-shadow:var(--shadow)}" +
+                        ".lc-top{background:linear-gradient(135deg,var(--accent),var(--accent2));" +
+                        "padding:28px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}" +
+                        ".lc-top h2{font-size:22px;font-weight:800;color:white}" +
+                        ".lc-top p{font-size:12px;color:rgba(255,255,255,.78)}" +
+                        ".err-box{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5;" +
+                        "padding:11px 16px;margin:16px 16px 0;border-radius:10px;font-size:12.5px;" +
+                        "display:flex;align-items:center;gap:8px}" +
+                        ".lc-form{padding:24px;display:flex;flex-direction:column;gap:16px;background:var(--bg2)}" +
+                        ".lc-field{display:flex;flex-direction:column;gap:6px}" +
+                        ".lc-field label{font-size:10.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px}" +
+                        ".lc-iw{position:relative}" +
+                        ".lc-iw i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px}" +
+                        ".lc-iw input{width:100%;padding:12px 13px 12px 38px;background:var(--bg);border:1px solid var(--border2);" +
+                        "border-radius:11px;color:var(--text);font-size:13.5px;font-family:'Inter',sans-serif;outline:none;transition:all .2s}" +
+                        ".lc-iw input:focus{border-color:rgba(245,158,11,.5);box-shadow:0 0 0 3px rgba(245,158,11,.08)}" +
+                        ".lc-iw input::placeholder{color:var(--text3)}" +
+                        ".lc-btn{padding:13px;background:linear-gradient(135deg,var(--accent),var(--accent2));" +
+                        "border:none;border-radius:12px;color:white;font-size:14px;font-weight:600;" +
+                        "font-family:'Inter',sans-serif;cursor:pointer;transition:all .25s;" +
+                        "display:flex;align-items:center;justify-content:center;gap:9px}" +
+                        ".lc-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(245,158,11,.35)}" +
+
+                        // Footer
+                        ".footer{text-align:center;padding:14px;color:var(--text3);font-size:11.5px;" +
+                        "border-top:1px solid var(--border);background:var(--bg2)}" +
+
+                        "@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}" +
+
+                        ".brand-logo-svg{animation:logoSpin 10s linear infinite;transform-origin:center;filter:drop-shadow(0 0 7px #f59e0b55);}" +
+                        ".brand:hover .brand-logo-svg{animation:logoSpin 1.5s linear infinite;filter:drop-shadow(0 0 14px #f59e0baa);}" +
+                        ".lc-logo-svg{animation:logoSpin 8s linear infinite;transform-origin:center;}" +
+                        "@keyframes logoSpin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}" +
+                        "@media(max-width:960px){" +
+                        ".login-page{flex-direction:column}.lp-left{min-height:300px}.lp-right{width:100%}" +
+                        ".lp-title{font-size:34px}.cards-grid{grid-template-columns:1fr 1fr}" +
+                        ".stats-row{grid-template-columns:repeat(2,1fr)}.nav-links{display:none}" +
+                        ".dash-wrap{padding:18px}" +
+                        "}";
     }
 
     private String escape(String s) {
         if (s == null) return "";
-        return s.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#39;");
+        return s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+                .replace("\"","&quot;").replace("'","&#39;");
     }
 }

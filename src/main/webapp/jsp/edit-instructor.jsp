@@ -1,442 +1,226 @@
 <%@ page import="model.Instructor" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-
 <%
     Instructor instructor = (Instructor) request.getAttribute("instructor");
-    String error = request.getParameter("error");
     boolean isAdd = (instructor == null);
+    String ctx = request.getContextPath();
+    String error = request.getParameter("error");
+    String __role = (session != null && session.getAttribute("userRole") != null)
+            ? session.getAttribute("userRole").toString() : "";
 %>
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= isAdd ? "Add New Instructor" : "Edit Instructor" %> - Driving School</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title><%= isAdd ? "Add Instructor" : "Edit Instructor" %> — DriveMaster</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
-
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-            animation: slideUp 0.5s ease;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .header {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-            padding: 30px 40px;
-            text-align: center;
-        }
-
-        .header h2 {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .header p {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-
-        .nav-bar {
-            background: #f8f9fa;
-            padding: 15px 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 15px;
-        }
-
-        .nav-btn {
-            padding: 8px 20px;
-            background: white;
-            border: 2px solid #f5576c;
-            color: #f5576c;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .nav-btn:hover {
-            background: #f5576c;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.3);
-        }
-
-        .form-content {
-            padding: 40px;
-        }
-
-        .alert {
-            padding: 15px 20px;
-            border-radius: 12px;
-            margin-bottom: 25px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .alert i {
-            font-size: 20px;
-        }
-
-        .alert-error {
-            background: #fee2e2;
-            border-left: 4px solid #dc2626;
-            color: #991b1b;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 24px;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-group-full {
-            grid-column: span 2;
-        }
-
-        label {
-            font-weight: 600;
-            font-size: 14px;
-            color: #374151;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .required {
-            color: #ef4444;
-            font-size: 12px;
-        }
-
-        input, select, textarea {
-            padding: 12px 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 14px;
-            font-family: 'Inter', sans-serif;
-            transition: all 0.3s ease;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: #f5576c;
-            box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.1);
-        }
-
-        input.error, select.error, textarea.error {
-            border-color: #ef4444;
-            background: #fef2f2;
-        }
-
-        .error-message {
-            font-size: 12px;
-            color: #ef4444;
-            margin-top: 6px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .hint {
-            font-size: 11px;
-            color: #6b7280;
-            margin-top: 6px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        input[readonly] {
-            background: #f3f4f6;
-            cursor: not-allowed;
-        }
-
-        .submit-btn {
-            margin-top: 30px;
-            padding: 14px 30px;
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(245, 87, 108, 0.3);
-        }
-
-        @media (max-width: 768px) {
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-            .form-group-full {
-                grid-column: span 1;
-            }
-            .header, .nav-bar, .form-content {
-                padding: 20px;
-            }
-        }
+        :root{--bg:#0a0c14;--bg2:#111420;--bg3:#181c2c;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.11);--text:#f0f2ff;--text2:#8b93b8;--text3:#4a5278;--accent:#f59e0b;--accent2:#ef4444;--blue:#3b82f6;--green:#10b981;--shadow:0 8px 32px rgba(0,0,0,0.4);--nav-h:60px}
+        [data-theme="light"]{--bg:#f0f2fa;--bg2:#ffffff;--bg3:#e8eaf4;--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);--text:#0d0f1a;--text2:#4a5278;--text3:#9ba3c8;--shadow:0 8px 32px rgba(0,0,0,0.07)}
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        html,body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .25s,color .25s}
+        .topbar{position:sticky;top:0;z-index:300;height:var(--nav-h);display:flex;align-items:center;justify-content:space-between;padding:0 28px;gap:12px;background:rgba(10,12,20,.97);border-bottom:1px solid var(--border);backdrop-filter:blur(22px)}
+        [data-theme="light"] .topbar{background:rgba(255,255,255,.97)}
+        .brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0}
+        .brand-logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:17px;color:#fff;box-shadow:0 3px 10px rgba(245,158,11,.28)}
+        .brand-name{font-size:16px;font-weight:800;color:var(--text);line-height:1.1}.brand-name span{color:var(--accent)}
+        .brand-sub{font-size:8.5px;color:var(--text3);text-transform:uppercase;letter-spacing:2px}
+        .nav-links{display:flex;gap:2px;flex:1;justify-content:center}
+        .nl{display:flex;align-items:center;gap:5px;padding:7px 11px;border-radius:9px;font-size:12px;font-weight:500;color:var(--text3);text-decoration:none;transition:all .18s;white-space:nowrap}
+        .nl i{font-size:12px}.nl:hover{background:rgba(245,158,11,.08);color:var(--accent)}.nl.active{background:rgba(245,158,11,.12);color:var(--accent);font-weight:600}
+        .topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+        .theme-btn{width:35px;height:35px;border-radius:9px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+        .theme-btn:hover{color:var(--accent);border-color:rgba(245,158,11,.3)}
+        .logout-btn{display:flex;align-items:center;gap:7px;padding:8px 15px;border-radius:10px;background:linear-gradient(135deg,var(--accent2),#c21b1b);color:#fff;text-decoration:none;font-size:12px;font-weight:600;transition:all .2s}
+        .logout-btn:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(239,68,68,.35)}
+        .page{max-width:900px;margin:0 auto;padding:32px 24px 60px}
+        .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;animation:fadeUp .45s ease both}
+        .page-title{font-size:22px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:10px}
+        .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;text-decoration:none;border:none;transition:all .2s}
+        .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+        .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(245,158,11,.32)}
+        .btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border2)}
+        .btn-ghost:hover{color:var(--accent);border-color:rgba(245,158,11,.3)}
+        .alert{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:11px;margin-bottom:18px;font-size:13px;font-weight:500;animation:fadeUp .4s ease both}
+        .alert-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5}
+        .alert-success{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);color:#6ee7b7}
+        .form-card{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:28px;box-shadow:var(--shadow);animation:fadeUp .5s ease .05s both}
+        .section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);padding-bottom:10px;margin-bottom:16px;margin-top:22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px}
+        .section-title:first-child{margin-top:0}
+        .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        .form-group{display:flex;flex-direction:column;gap:5px}
+        .form-group.full{grid-column:span 2}
+        .form-label{font-size:10.5px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.7px}
+        .form-label span{color:var(--accent2)}
+        .form-input,.form-select{padding:11px 13px;background:var(--bg);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:13.5px;font-family:'Inter',sans-serif;outline:none;width:100%;transition:border-color .2s,box-shadow .2s}
+        .form-input:focus,.form-select:focus{border-color:rgba(245,158,11,.45);box-shadow:0 0 0 3px rgba(245,158,11,.07)}
+        .form-input::placeholder{color:var(--text3)}
+        .form-select option{background:var(--bg2)}
+        .form-actions{display:flex;gap:12px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+        @media(max-width:800px){.topbar{padding:0 14px}.nav-links{display:none}.page{padding:18px 12px 50px}.form-grid{grid-template-columns:1fr}.form-group.full{grid-column:span 1}.page-header{flex-direction:column;align-items:flex-start;gap:10px}}
     </style>
 </head>
 <body>
-
-<div class="container">
-    <div class="header">
-        <h2><i class="fas fa-<%= isAdd ? "user-plus" : "user-edit" %>"></i> <%= isAdd ? "Add New Instructor" : "Edit Instructor" %></h2>
-        <p><%= isAdd ? "Register a new driving instructor" : "Update instructor information" %></p>
-    </div>
-
-    <div class="nav-bar">
-        <div class="nav-links">
-            <a href="<%= request.getContextPath() %>/instructors" class="nav-btn">
-                <i class="fas fa-list"></i> Instructor List
-            </a>
-            <a href="<%= request.getContextPath() %>/home" class="nav-btn">
-                <i class="fas fa-home"></i> Dashboard
-            </a>
-        </div>
-        <div>
-            <i class="fas fa-chalkboard-teacher" style="color: #f5576c;"></i>
-            <span style="font-size: 14px; color: #6b7280;">Instructor Management</span>
-        </div>
-    </div>
-
-    <div class="form-content">
-        <% if ("empty".equals(error)) { %>
-        <div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i><span>Please fill in all required fields.</span></div>
-        <% } else if ("experience".equals(error)) { %>
-        <div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i><span>Experience must be between 0 and 50 years.</span></div>
-        <% } else if ("nicExists".equals(error)) { %>
-        <div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i><span>NIC number already exists in the system.</span></div>
-        <% } else if ("licenseExists".equals(error)) { %>
-        <div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i><span>License number already exists in the system.</span></div>
+<nav class="topbar">
+    <a href="<%= ctx %>/home" class="brand">
+        <div class="brand-logo"><i class="fas fa-car"></i></div>
+        <div><div class="brand-name">Drive<span>Master</span></div><div class="brand-sub">Driving Academy</div></div>
+    </a>
+    <div class="nav-links">
+        <% if ("admin".equalsIgnoreCase(__role)) { %>
+        <a href="<%= ctx %>/students"    class="nl"><i class="fas fa-user-graduate"></i><span>Students</span></a>
+        <a href="<%= ctx %>/instructors" class="nl active"><i class="fas fa-chalkboard-teacher"></i><span>Instructors</span></a>
+        <a href="<%= ctx %>/vehicles"    class="nl"><i class="fas fa-car"></i><span>Vehicles</span></a>
+        <a href="<%= ctx %>/lessons"     class="nl"><i class="fas fa-calendar-check"></i><span>Lessons</span></a>
+        <a href="<%= ctx %>/payments"    class="nl"><i class="fas fa-money-bill-wave"></i><span>Payments</span></a>
+        <a href="<%= ctx %>/tests"       class="nl"><i class="fas fa-clipboard-list"></i><span>Tests</span></a>
+        <% } else { %>
+        <a href="<%= ctx %>/lessons"  class="nl"><i class="fas fa-calendar-check"></i><span>My Lessons</span></a>
+        <a href="<%= ctx %>/tests"    class="nl"><i class="fas fa-clipboard-list"></i><span>My Tests</span></a>
+        <a href="<%= ctx %>/payments" class="nl"><i class="fas fa-money-bill-wave"></i><span>My Payments</span></a>
         <% } %>
+    </div>
+    <div class="topbar-right">
+        <button class="theme-btn" id="themeBtn" title="Toggle theme"><i class="fas fa-moon" id="themeIcon"></i></button>
+        <a href="<%= ctx %>/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    </div>
+</nav>
 
-        <form id="instructorForm" action="<%= request.getContextPath() %>/instructors" method="post" novalidate>
+<div class="page">
+    <div class="page-header">
+        <div class="page-title">
+            <i class="fas fa-chalkboard-teacher" style="color:var(--green)"></i>
+            <%= isAdd ? "Add Instructor" : "Edit Instructor" %>
+        </div>
+        <a href="<%= ctx %>/instructors" class="btn btn-ghost"><i class="fas fa-arrow-left"></i> Back</a>
+    </div>
+
+    <% if ("empty".equals(error)) { %>
+    <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Please fill in all required fields.</div>
+    <% } else if ("nicExists".equals(error)) { %>
+    <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> NIC already exists in the system.</div>
+    <% } else if ("licenseExists".equals(error)) { %>
+    <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> License number already exists.</div>
+    <% } else if ("usernameExists".equals(error)) { %>
+    <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Username is already taken.</div>
+    <% } else if ("experience".equals(error)) { %>
+    <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Experience must be a number between 0 and 50.</div>
+    <% } %>
+
+    <div class="form-card">
+        <form action="<%= ctx %>/instructors" method="post">
             <input type="hidden" name="action" value="<%= isAdd ? "add" : "update" %>">
-            <% if (!isAdd) { %>
-            <input type="hidden" name="instructorId" value="<%= instructor.getInstructorId() %>">
-            <% } %>
+            <% if (!isAdd) { %><input type="hidden" name="instructorId" value="<%= instructor.getInstructorId() %>"><% } %>
 
+            <div class="section-title"><i class="fas fa-user"></i> Personal Information</div>
             <div class="form-grid">
                 <div class="form-group">
-                    <label><i class="fas fa-id-card"></i> Instructor ID <span class="required">*</span></label>
-                    <input type="text" value="<%= isAdd ? "Auto-generated" : instructor.getInstructorId() %>" readonly>
+                    <label class="form-label">Full Name <span>*</span></label>
+                    <input type="text" name="name" class="form-input" placeholder="Full name"
+                           value="<%= !isAdd ? instructor.getName() : "" %>" required>
                 </div>
-
                 <div class="form-group">
-                    <label><i class="fas fa-user"></i> Full Name <span class="required">*</span></label>
-                    <input type="text" id="name" name="name" value="<%= isAdd ? "" : instructor.getName() %>"
-                           placeholder="Enter full name" required pattern="[A-Za-z ]{3,}">
-                    <div class="error-message" id="nameError"></div>
+                    <label class="form-label">NIC <span>*</span></label>
+                    <input type="text" name="nic" class="form-input" placeholder="NIC number"
+                           value="<%= !isAdd ? instructor.getNic() : "" %>" required>
                 </div>
-
                 <div class="form-group">
-                    <label><i class="fas fa-id-card"></i> NIC Number <span class="required">*</span></label>
-                    <input type="text" id="nic" name="nic" value="<%= isAdd ? "" : instructor.getNic() %>"
-                           placeholder="123456789V or 200012345678" maxlength="12" required>
-                    <div class="error-message" id="nicError"></div>
-                    <div class="hint"><i class="fas fa-info-circle"></i> Format: 9 digits + V OR 12 digits</div>
+                    <label class="form-label">Phone <span>*</span></label>
+                    <input type="text" name="phone" class="form-input" placeholder="Phone number"
+                           value="<%= !isAdd ? instructor.getPhone() : "" %>" required>
                 </div>
-
                 <div class="form-group">
-                    <label><i class="fas fa-phone"></i> Contact Number <span class="required">*</span></label>
-                    <input type="tel" id="phone" name="phone" value="<%= isAdd ? "" : instructor.getPhone() %>"
-                           placeholder="0712345678" maxlength="10" required>
-                    <div class="error-message" id="phoneError"></div>
-                    <div class="hint"><i class="fas fa-info-circle"></i> 10 digits starting with 07</div>
+                    <label class="form-label">Email <span>*</span></label>
+                    <input type="email" name="email" class="form-input" placeholder="Email address"
+                           value="<%= !isAdd ? instructor.getEmail() : "" %>" required>
                 </div>
-
                 <div class="form-group">
-                    <label><i class="fas fa-envelope"></i> Email Address <span class="required">*</span></label>
-                    <input type="email" id="email" name="email" value="<%= isAdd ? "" : instructor.getEmail() %>"
-                           placeholder="instructor@example.com" required>
-                    <div class="error-message" id="emailError"></div>
-                </div>
-
-                <div class="form-group-full">
-                    <label><i class="fas fa-map-marker-alt"></i> Address <span class="required">*</span></label>
-                    <textarea id="address" name="address" rows="2" required><%= isAdd ? "" : instructor.getAddress() %></textarea>
-                </div>
-
-                <div class="form-group-full">
-                    <label><i class="fas fa-lock"></i> Password <span class="required">*</span></label>
-                    <% if (isAdd) { %>
-                    <input type="text" id="username" name="username"
-                           placeholder="Username for login" required
-                           style="margin-bottom:8px;">
-                    <div style="font-size:11px;color:#6b7280;margin-bottom:12px;">
-                        <i class="fas fa-info-circle"></i> Instructor uses this to login
-                    </div>
-                    <% } %>
-                    <input type="password" id="password" name="password"
-                           placeholder="<%= isAdd ? "Create password (min 6 chars)" : "Leave blank to keep current" %>"
-                        <%= isAdd ? "required" : "" %>>
-                    <div class="error-message" id="passwordError"></div>
-                    <div class="hint"><i class="fas fa-info-circle"></i> Minimum 6 characters with letters and numbers</div>
-                </div>
-
-                <div class="form-group">
-                    <label><i class="fas fa-id-card"></i> License Number <span class="required">*</span></label>
-                    <input type="text" id="licenseNumber" name="licenseNumber"
-                           value="<%= isAdd ? "" : instructor.getLicenseNumber() %>"
-                           placeholder="INS/DL/12345" pattern="INS/DL/[0-9]{5}" required>
-                    <div class="error-message" id="licenseError"></div>
-                    <div class="hint"><i class="fas fa-info-circle"></i> Format: INS/DL/xxxxx (5 digits)</div>
-                </div>
-
-                <div class="form-group">
-                    <label><i class="fas fa-cogs"></i> Specialization <span class="required">*</span></label>
-                    <select id="specialization" name="specialization" required>
-                        <option value="">-- Select Specialization --</option>
-                        <option value="Manual" <%= !isAdd && "Manual".equals(instructor.getSpecialization()) ? "selected" : "" %>>Manual</option>
-                        <option value="Automatic" <%= !isAdd && "Automatic".equals(instructor.getSpecialization()) ? "selected" : "" %>>Automatic</option>
-                        <option value="Both" <%= !isAdd && "Both".equals(instructor.getSpecialization()) ? "selected" : "" %>>Both (Manual & Automatic)</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label><i class="fas fa-chart-line"></i> Experience (Years) <span class="required">*</span></label>
-                    <input type="number" id="experience" name="experience"
-                           value="<%= isAdd ? "" : instructor.getExperience() %>"
-                           placeholder="0-50" min="0" max="50" required>
-                    <div class="error-message" id="experienceError"></div>
-                </div>
-
-                <div class="form-group">
-                    <label><i class="fas fa-clock"></i> Availability <span class="required">*</span></label>
-                    <select id="availability" name="availability" required>
-                        <option value="">-- Select Availability --</option>
-                        <option value="Available" <%= !isAdd && "Available".equals(instructor.getAvailability()) ? "selected" : "" %>>Available</option>
-                        <option value="Busy" <%= !isAdd && "Busy".equals(instructor.getAvailability()) ? "selected" : "" %>>Busy</option>
-                        <option value="On Leave" <%= !isAdd && "On Leave".equals(instructor.getAvailability()) ? "selected" : "" %>>On Leave</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label><i class="fas fa-venus-mars"></i> Gender <span class="required">*</span></label>
-                    <select id="gender" name="gender" required>
-                        <option value="">-- Select Gender --</option>
-                        <option value="Male" <%= !isAdd && "Male".equals(instructor.getGender()) ? "selected" : "" %>>Male</option>
+                    <label class="form-label">Gender <span>*</span></label>
+                    <select name="gender" class="form-select" required>
+                        <option value="">— Select —</option>
+                        <option value="Male"   <%= !isAdd && "Male".equals(instructor.getGender())   ? "selected" : "" %>>Male</option>
                         <option value="Female" <%= !isAdd && "Female".equals(instructor.getGender()) ? "selected" : "" %>>Female</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Experience (years) <span>*</span></label>
+                    <input type="number" name="experience" class="form-input" placeholder="Years of experience"
+                           min="0" max="50" value="<%= !isAdd ? instructor.getExperience() : "" %>" required>
+                </div>
+                <div class="form-group full">
+                    <label class="form-label">Address <span>*</span></label>
+                    <input type="text" name="address" class="form-input" placeholder="Full address"
+                           value="<%= !isAdd ? instructor.getAddress() : "" %>" required>
+                </div>
+            </div>
+
+            <div class="section-title"><i class="fas fa-id-badge"></i> Professional Details</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">License Number <span>*</span></label>
+                    <input type="text" name="licenseNumber" class="form-input" placeholder="Driving license number"
+                           value="<%= !isAdd ? instructor.getLicenseNumber() : "" %>" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Specialization <span>*</span></label>
+                    <select name="specialization" class="form-select" required>
+                        <option value="">— Select —</option>
+                        <option value="Manual"    <%= !isAdd && "Manual".equals(instructor.getSpecialization())    ? "selected" : "" %>>Manual</option>
+                        <option value="Automatic" <%= !isAdd && "Automatic".equals(instructor.getSpecialization()) ? "selected" : "" %>>Automatic</option>
+                        <option value="Both"      <%= !isAdd && "Both".equals(instructor.getSpecialization())      ? "selected" : "" %>>Both</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Availability <span>*</span></label>
+                    <select name="availability" class="form-select" required>
+                        <option value="">— Select —</option>
+                        <option value="Available"   <%= !isAdd && "Available".equals(instructor.getAvailability())   ? "selected" : "" %>>Available</option>
+                        <option value="Unavailable" <%= !isAdd && "Unavailable".equals(instructor.getAvailability()) ? "selected" : "" %>>Unavailable</option>
                     </select>
                 </div>
             </div>
 
-            <button type="submit" class="submit-btn">
-                <i class="fas fa-<%= isAdd ? "save" : "sync-alt" %>"></i>
-                <%= isAdd ? "Register Instructor" : "Update Information" %>
-            </button>
+            <div class="section-title"><i class="fas fa-key"></i> Login Credentials</div>
+            <div class="form-grid">
+                <% if (isAdd) { %>
+                <div class="form-group">
+                    <label class="form-label">Username <span>*</span></label>
+                    <input type="text" name="username" class="form-input" placeholder="Login username" required>
+                </div>
+                <% } %>
+                <div class="form-group">
+                    <label class="form-label">Password <span><%= isAdd ? "*" : "" %></span> <%= !isAdd ? "<small style='font-weight:400;text-transform:none'>(leave blank to keep)</small>" : "" %></label>
+                    <input type="password" name="password" class="form-input"
+                           placeholder="<%= isAdd ? "Create password" : "Leave blank to keep current" %>"
+                        <%= isAdd ? "required" : "" %>>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> <%= isAdd ? "Add Instructor" : "Update Instructor" %>
+                </button>
+                <a href="<%= ctx %>/instructors" class="btn btn-ghost"><i class="fas fa-times"></i> Cancel</a>
+            </div>
         </form>
     </div>
 </div>
 
 <script>
-    // Real-time validation functions
-    const form = document.getElementById('instructorForm');
-
-    // Name validation
-    const nameInput = document.getElementById('name');
-    nameInput.addEventListener('input', () => {
-        const name = nameInput.value;
-        const errorDiv = document.getElementById('nameError');
-        if (name.trim().length < 3) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Name must be at least 3 characters';
-            nameInput.classList.add('error');
-        } else if (!/^[A-Za-z\s]+$/.test(name)) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Name can only contain letters and spaces';
-            nameInput.classList.add('error');
-        } else {
-            errorDiv.innerHTML = '';
-            nameInput.classList.remove('error');
-        }
-    });
-
-    // NIC validation
-    const nicInput = document.getElementById('nic');
-    nicInput.addEventListener('input', (e) => {
-        nicInput.value = nicInput.value.replace(/[^0-9Vv]/g, '');
-        if (nicInput.value.length > 12) nicInput.value = nicInput.value.slice(0, 12);
-        validateNIC();
-    });
-
-    function validateNIC() {
-        const nic = nicInput.value;
-        const errorDiv = document.getElementById('nicError');
-        const patternOld = /^[0-9]{9}[Vv]$/;
-        const patternNew = /^[0-9]{12}$/;
-        if (nic && !patternOld.test(nic) && !patternNew.test(nic)) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Invalid NIC format';
-            nicInput.classList.add('error');
-            return false;
-        }
+    (function(){
+        var h=document.documentElement,b=document.getElementById("themeBtn"),ic=document.getElementById("themeIcon");
+        var t=localStorage.getItem("dm-theme")||"dark";
+        h.setAttribute("data-theme",t);
+        ic.className=t==="dark"?"fas fa-moon":"fas fa-sun";
+        b.addEventListener("click",function(){
+            var n=h.getAttribute("data-theme")==="dark"?"light":"dark";
+            h.setAttribute("data-theme",n);
+            localStorage.setItem("dm-theme",n);
+            ic.className=n==="dark"?"fas fa-moon":"fas fa-sun";
+        });
+    })();
+</script>
+</body>
+</html>

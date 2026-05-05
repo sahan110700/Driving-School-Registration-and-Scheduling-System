@@ -31,10 +31,17 @@ public class PaymentServlet extends HttpServlet {
             return;
         }
 
+        // Get role
+        Object roleObj = req.getSession(false).getAttribute("userRole");
+        String userRole = (roleObj != null) ? roleObj.toString() : "student";
+        boolean isAdmin = "admin".equalsIgnoreCase(userRole);
+        String loggedInUser = String.valueOf(req.getSession(false).getAttribute("loggedInUser"));
+
         String action = req.getParameter("action");
 
-        // Handle delete
+        // Handle delete — admin only
         if ("delete".equals(action)) {
+            if (!isAdmin) { resp.sendRedirect(req.getContextPath() + "/home"); return; }
             String paymentId = req.getParameter("id");
             if (paymentId != null && paymentDAO.deletePayment(paymentId)) {
                 resp.sendRedirect(req.getContextPath() + "/payments?success=deleted");
@@ -44,27 +51,48 @@ public class PaymentServlet extends HttpServlet {
             return;
         }
 
-        // Handle add form
+        // Handle add form — admin only
         if ("add-form".equals(action)) {
+            if (!isAdmin) { resp.sendRedirect(req.getContextPath() + "/home"); return; }
             req.setAttribute("students", studentDAO.getAllActiveStudents());
             req.getRequestDispatcher("/jsp/add-payment.jsp").forward(req, resp);
             return;
         }
 
-        // Get filter parameters
-        String searchStudent = req.getParameter("searchStudent");
-        String filterStatus = req.getParameter("filterStatus");
+        List<java.util.Map<String, Object>> paymentSummary;
 
-        List<Map<String, Object>> paymentSummary;
-
-        if (searchStudent != null && !searchStudent.isEmpty()) {
-            paymentSummary = paymentDAO.searchPaymentsByStudentName(searchStudent);
-            req.setAttribute("searchStudent", searchStudent);
-        } else if (filterStatus != null && !filterStatus.isEmpty() && !"All".equals(filterStatus)) {
-            paymentSummary = paymentDAO.filterPaymentsByStatus(filterStatus);
-            req.setAttribute("filterStatus", filterStatus);
+        if (!isAdmin) {
+            // Student: find their own student record by matching name to username
+            // then filter summary to just their entry
+            String searchStudent = req.getParameter("searchStudent");
+            // Always show only this student's payments — use their username as name filter
+            paymentSummary = paymentDAO.searchPaymentsByStudentName(loggedInUser);
+            // If no result by username, try full summary and filter manually
+            if (paymentSummary == null || paymentSummary.isEmpty()) {
+                List<java.util.Map<String, Object>> all = paymentDAO.getPaymentSummary();
+                paymentSummary = new java.util.ArrayList<>();
+                if (all != null) {
+                    for (java.util.Map<String, Object> row : all) {
+                        String sName = (String) row.get("studentName");
+                        if (loggedInUser.equalsIgnoreCase(sName)) {
+                            paymentSummary.add(row);
+                        }
+                    }
+                }
+            }
         } else {
-            paymentSummary = paymentDAO.getPaymentSummary();
+            // Admin: apply search/filter as before
+            String searchStudent = req.getParameter("searchStudent");
+            String filterStatus = req.getParameter("filterStatus");
+            if (searchStudent != null && !searchStudent.isEmpty()) {
+                paymentSummary = paymentDAO.searchPaymentsByStudentName(searchStudent);
+                req.setAttribute("searchStudent", searchStudent);
+            } else if (filterStatus != null && !filterStatus.isEmpty() && !"All".equals(filterStatus)) {
+                paymentSummary = paymentDAO.filterPaymentsByStatus(filterStatus);
+                req.setAttribute("filterStatus", filterStatus);
+            } else {
+                paymentSummary = paymentDAO.getPaymentSummary();
+            }
         }
 
         // Get statistics
@@ -74,6 +102,7 @@ public class PaymentServlet extends HttpServlet {
 
         req.setAttribute("paymentSummary", paymentSummary);
         req.setAttribute("students", studentDAO.getAllActiveStudents());
+        req.setAttribute("isAdminView", isAdmin);
         req.setAttribute("totalRevenue", totalRevenue);
         req.setAttribute("revenueByMethod", revenueByMethod);
         req.setAttribute("monthlyRevenue", monthlyRevenue);

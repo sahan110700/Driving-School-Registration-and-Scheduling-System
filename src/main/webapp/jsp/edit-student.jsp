@@ -1,802 +1,271 @@
 <%@ page import="model.Student" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-
 <%
     Student student = (Student) request.getAttribute("student");
     String error = request.getParameter("error");
     boolean isAdd = (student == null);
+    String ctx = request.getContextPath();
+    String __role = (session != null && session.getAttribute("userRole") != null)
+            ? session.getAttribute("userRole").toString() : "";
 %>
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= isAdd ? "Add New Student" : "Edit Student" %> - Driving School Management</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title><%= isAdd ? "Add Student" : "Edit Student" %> — DriveMaster</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-            animation: slideUp 0.5s ease;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Header */
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px 40px;
-            text-align: center;
-        }
-
-        .header h2 {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .header p {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-
-        /* Navigation Bar */
-        .nav-bar {
-            background: #f8f9fa;
-            padding: 15px 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 15px;
-        }
-
-        .nav-btn {
-            padding: 8px 20px;
-            background: white;
-            border: 2px solid #667eea;
-            color: #667eea;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .nav-btn:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
-        }
-
-        /* Form Content */
-        .form-content {
-            padding: 40px;
-        }
-
-        /* Alert Messages */
-        .alert {
-            padding: 15px 20px;
-            border-radius: 12px;
-            margin-bottom: 25px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .alert i {
-            font-size: 20px;
-        }
-
-        .alert-error {
-            background: #fee2e2;
-            border-left: 4px solid #dc2626;
-            color: #991b1b;
-        }
-
-        .alert-success {
-            background: #d1fae5;
-            border-left: 4px solid #10b981;
-            color: #065f46;
-        }
-
-        /* Form Grid */
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 24px;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-group-full {
-            grid-column: span 2;
-        }
-
-        label {
-            font-weight: 600;
-            font-size: 14px;
-            color: #374151;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .required {
-            color: #ef4444;
-            font-size: 12px;
-        }
-
-        input, select, textarea {
-            padding: 12px 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 14px;
-            font-family: 'Inter', sans-serif;
-            transition: all 0.3s ease;
-            background: white;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        input.error, select.error, textarea.error {
-            border-color: #ef4444;
-            background: #fef2f2;
-        }
-
-        .error-message {
-            font-size: 12px;
-            color: #ef4444;
-            margin-top: 6px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .success-message {
-            font-size: 12px;
-            color: #10b981;
-            margin-top: 6px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .hint {
-            font-size: 11px;
-            color: #6b7280;
-            margin-top: 6px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .hint i {
-            font-size: 10px;
-        }
-
-        input[readonly] {
-            background: #f3f4f6;
-            cursor: not-allowed;
-            font-weight: 500;
-            color: #374151;
-        }
-
-        /* Submit Button */
-        .submit-btn {
-            margin-top: 30px;
-            padding: 14px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .submit-btn:active {
-            transform: translateY(0);
-        }
-
-        /* Character Counter */
-        .char-counter {
-            font-size: 11px;
-            color: #6b7280;
-            margin-top: 6px;
-            text-align: right;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .form-group-full {
-                grid-column: span 1;
-            }
-
-            .container {
-                margin: 0 15px;
-            }
-
-            .header, .nav-bar, .form-content {
-                padding: 20px;
-            }
-        }
+        :root{--bg:#0a0c14;--bg2:#111420;--bg3:#181c2c;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.11);--text:#f0f2ff;--text2:#8b93b8;--text3:#4a5278;--accent:#f59e0b;--accent2:#ef4444;--blue:#3b82f6;--green:#10b981;--shadow:0 8px 32px rgba(0,0,0,0.4);--nav-h:60px}
+        [data-theme="light"]{--bg:#f0f2fa;--bg2:#ffffff;--bg3:#e8eaf4;--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);--text:#0d0f1a;--text2:#4a5278;--text3:#9ba3c8;--shadow:0 8px 32px rgba(0,0,0,0.07)}
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        html,body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .25s,color .25s}
+        .topbar{position:sticky;top:0;z-index:300;height:var(--nav-h);display:flex;align-items:center;justify-content:space-between;padding:0 28px;gap:12px;background:rgba(10,12,20,.97);border-bottom:1px solid var(--border);backdrop-filter:blur(22px)}
+        [data-theme="light"] .topbar{background:rgba(255,255,255,.97)}
+        .brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0}
+        .brand-logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:17px;color:#fff;box-shadow:0 3px 10px rgba(245,158,11,.28)}
+        .brand-name{font-size:16px;font-weight:800;color:var(--text);line-height:1.1}.brand-name span{color:var(--accent)}
+        .brand-sub{font-size:8.5px;color:var(--text3);text-transform:uppercase;letter-spacing:2px}
+        .nav-links{display:flex;gap:2px;flex:1;justify-content:center}
+        .nl{display:flex;align-items:center;gap:5px;padding:7px 11px;border-radius:9px;font-size:12px;font-weight:500;color:var(--text3);text-decoration:none;transition:all .18s;white-space:nowrap}
+        .nl i{font-size:12px}.nl:hover{background:rgba(245,158,11,.08);color:var(--accent)}.nl.active{background:rgba(245,158,11,.12);color:var(--accent);font-weight:600}
+        .topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+        .theme-btn{width:35px;height:35px;border-radius:9px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+        .theme-btn:hover{color:var(--accent);border-color:rgba(245,158,11,.3)}
+        .logout-btn{display:flex;align-items:center;gap:7px;padding:8px 15px;border-radius:10px;background:linear-gradient(135deg,var(--accent2),#c21b1b);color:#fff;text-decoration:none;font-size:12px;font-weight:600;transition:all .2s}
+        .logout-btn:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(239,68,68,.35)}
+        .page{max-width:900px;margin:0 auto;padding:32px 24px 60px}
+        .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;animation:fadeUp .45s ease both}
+        .page-title{font-size:22px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:10px}
+        .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;text-decoration:none;border:none;transition:all .2s}
+        .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+        .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(245,158,11,.32)}
+        .btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border2)}
+        .btn-ghost:hover{color:var(--accent);border-color:rgba(245,158,11,.3)}
+        .alert{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:11px;margin-bottom:18px;font-size:13px;font-weight:500;animation:fadeUp .4s ease both}
+        .alert-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5}
+        .form-card{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:28px;box-shadow:var(--shadow);animation:fadeUp .5s ease .05s both}
+        .section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);padding-bottom:10px;margin-bottom:16px;margin-top:22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px}
+        .section-title:first-child{margin-top:0}
+        .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        .form-group{display:flex;flex-direction:column;gap:5px}
+        .form-group.full{grid-column:span 2}
+        .form-label{font-size:10.5px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.7px}
+        .form-label span{color:var(--accent2)}
+        .form-input,.form-select,.form-textarea{padding:11px 13px;background:var(--bg);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:13.5px;font-family:'Inter',sans-serif;outline:none;width:100%;transition:border-color .2s,box-shadow .2s}
+        .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:rgba(245,158,11,.45);box-shadow:0 0 0 3px rgba(245,158,11,.07)}
+        .form-input::placeholder,.form-textarea::placeholder{color:var(--text3)}
+        .form-input[readonly]{opacity:.55;cursor:not-allowed}
+        .form-select option{background:var(--bg2)}
+        .form-textarea{resize:vertical;min-height:80px}
+        .form-hint{font-size:11px;color:var(--text3);margin-top:3px}
+        .form-err{font-size:11px;color:#fca5a5;margin-top:3px;display:none}
+        .form-input.err{border-color:rgba(239,68,68,.5)}
+        .form-actions{display:flex;gap:12px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+        @media(max-width:800px){.topbar{padding:0 14px}.nav-links{display:none}.page{padding:18px 12px 50px}.form-grid{grid-template-columns:1fr}.form-group.full{grid-column:span 1}.page-header{flex-direction:column;align-items:flex-start;gap:10px}}
     </style>
 </head>
 <body>
-
-<div class="container">
-    <div class="header">
-        <h2><i class="fas fa-<%= isAdd ? "user-plus" : "user-edit" %>"></i> <%= isAdd ? "Register New Student" : "Edit Student Information" %></h2>
-        <p><%= isAdd ? "Please fill in all required details to register a new student" : "Update the student's information as needed" %></p>
-    </div>
-
-    <div class="nav-bar">
-        <div class="nav-links">
-            <a href="<%= request.getContextPath() %>/students" class="nav-btn">
-                <i class="fas fa-list"></i> Student List
-            </a>
-            <a href="<%= request.getContextPath() %>/home" class="nav-btn">
-                <i class="fas fa-home"></i> Dashboard
-            </a>
-        </div>
-        <div>
-            <i class="fas fa-graduation-cap" style="color: #667eea;"></i>
-            <span style="font-size: 14px; color: #6b7280;">Driving School Management</span>
-        </div>
-    </div>
-
-    <div class="form-content">
-        <% if ("empty".equals(error)) { %>
-        <div class="alert alert-error">
-            <i class="fas fa-exclamation-triangle"></i>
-            <span>Please fill in all required fields before submitting.</span>
-        </div>
-        <% } else if ("age".equals(error)) { %>
-        <div class="alert alert-error">
-            <i class="fas fa-exclamation-triangle"></i>
-            <span>Age must be a valid number between 16 and 100.</span>
-        </div>
-        <% } else if ("password".equals(error)) { %>
-        <div class="alert alert-error">
-            <i class="fas fa-exclamation-triangle"></i>
-            <span>Password is required and must be at least 6 characters long.</span>
-        </div>
+<nav class="topbar">
+    <a href="<%= ctx %>/home" class="brand">
+        <div class="brand-logo"><i class="fas fa-car"></i></div>
+        <div><div class="brand-name">Drive<span>Master</span></div><div class="brand-sub">Driving Academy</div></div>
+    </a>
+    <div class="nav-links">
+        <% if ("admin".equalsIgnoreCase(__role)) { %>
+        <a href="<%= ctx %>/students"    class="nl active"><i class="fas fa-user-graduate"></i><span>Students</span></a>
+        <a href="<%= ctx %>/instructors" class="nl"><i class="fas fa-chalkboard-teacher"></i><span>Instructors</span></a>
+        <a href="<%= ctx %>/vehicles"    class="nl"><i class="fas fa-car"></i><span>Vehicles</span></a>
+        <a href="<%= ctx %>/lessons"     class="nl"><i class="fas fa-calendar-check"></i><span>Lessons</span></a>
+        <a href="<%= ctx %>/payments"    class="nl"><i class="fas fa-money-bill-wave"></i><span>Payments</span></a>
+        <a href="<%= ctx %>/tests"       class="nl"><i class="fas fa-clipboard-list"></i><span>Tests</span></a>
+        <% } else { %>
+        <a href="<%= ctx %>/lessons"  class="nl"><i class="fas fa-calendar-check"></i><span>My Lessons</span></a>
+        <a href="<%= ctx %>/tests"    class="nl"><i class="fas fa-clipboard-list"></i><span>My Tests</span></a>
+        <a href="<%= ctx %>/payments" class="nl"><i class="fas fa-money-bill-wave"></i><span>My Payments</span></a>
         <% } %>
+    </div>
+    <div class="topbar-right">
+        <button class="theme-btn" id="themeBtn" title="Toggle theme"><i class="fas fa-moon" id="themeIcon"></i></button>
+        <a href="<%= ctx %>/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    </div>
+</nav>
 
-        <form id="studentForm" action="<%= request.getContextPath() %>/students" method="post" novalidate>
+<div class="page">
+    <div class="page-header">
+        <div class="page-title">
+            <i class="fas fa-user-graduate" style="color:var(--blue)"></i>
+            <%= isAdd ? "Add Student" : "Edit Student" %>
+        </div>
+        <a href="<%= ctx %>/students" class="btn btn-ghost"><i class="fas fa-arrow-left"></i> Back</a>
+    </div>
+
+    <% if ("empty".equals(error)) { %>
+    <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Please fill in all required fields.</div>
+    <% } else if ("age".equals(error)) { %>
+    <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Age must be a valid number between 16 and 100.</div>
+    <% } else if ("usernameExists".equals(error)) { %>
+    <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Username already taken.</div>
+    <% } %>
+
+    <div class="form-card">
+        <form id="studentForm" action="<%= ctx %>/students" method="post">
             <input type="hidden" name="action" value="<%= isAdd ? "add" : "update" %>">
-            <% if (!isAdd) { %>
-            <input type="hidden" name="studentId" value="<%= student.getStudentId() %>">
-            <% } %>
+            <% if (!isAdd) { %><input type="hidden" name="studentId" value="<%= student.getStudentId() %>"><% } %>
 
+            <div class="section-title"><i class="fas fa-user"></i> Personal Information</div>
             <div class="form-grid">
-                <!-- Student ID (Auto-generated) -->
                 <div class="form-group">
-                    <label>
-                        <i class="fas fa-id-card"></i> Student ID
-                        <span class="required">*</span>
-                    </label>
-                    <input type="text" value="<%= isAdd ? "Will be auto-generated" : student.getStudentId() %>" readonly>
+                    <label class="form-label">Student ID</label>
+                    <input type="text" class="form-input" value="<%= isAdd ? "Auto-generated" : student.getStudentId() %>" readonly>
                 </div>
-
-                <!-- Full Name -->
                 <div class="form-group">
-                    <label>
-                        <i class="fas fa-user"></i> Full Name
-                        <span class="required">*</span>
-                    </label>
-                    <input type="text" id="name" name="name"
-                           value="<%= isAdd ? "" : student.getName() %>"
-                           placeholder="Enter full name"
-                           required>
-                    <div class="error-message" id="nameError"></div>
+                    <label class="form-label">Full Name <span>*</span></label>
+                    <input type="text" id="name" name="name" class="form-input" placeholder="Full name"
+                           value="<%= isAdd ? "" : student.getName() %>" required>
+                    <div class="form-err" id="nameErr"></div>
                 </div>
-
-                <!-- NIC -->
                 <div class="form-group">
-                    <label>
-                        <i class="fas fa-id-card"></i> NIC Number
-                        <span class="required">*</span>
-                    </label>
-                    <input type="text" id="nic" name="nic"
-                           value="<%= isAdd ? "" : student.getNic() %>"
-                           placeholder="123456789V or 200012345678"
-                           maxlength="12" required>
-                    <div class="error-message" id="nicError"></div>
-                    <div class="hint">
-                        <i class="fas fa-info-circle"></i> Format: 9 digits + V (old) OR 12 digits (new)
-                    </div>
+                    <label class="form-label">NIC Number <span>*</span></label>
+                    <input type="text" id="nic" name="nic" class="form-input" placeholder="123456789V or 200012345678"
+                           value="<%= isAdd ? "" : student.getNic() %>" maxlength="12" required>
+                    <div class="form-hint">9 digits + V (old) or 12 digits (new)</div>
+                    <div class="form-err" id="nicErr"></div>
                 </div>
-
-                <!-- Phone -->
                 <div class="form-group">
-                    <label>
-                        <i class="fas fa-phone"></i> Contact Number
-                        <span class="required">*</span>
-                    </label>
-                    <input type="tel" id="phone" name="phone"
-                           value="<%= isAdd ? "" : student.getPhone() %>"
-                           placeholder="0712345678"
-                           maxlength="10" required>
-                    <div class="error-message" id="phoneError"></div>
-                    <div class="hint">
-                        <i class="fas fa-info-circle"></i> 10 digits starting with 07
-                    </div>
+                    <label class="form-label">Phone <span>*</span></label>
+                    <input type="tel" id="phone" name="phone" class="form-input" placeholder="0712345678"
+                           value="<%= isAdd ? "" : student.getPhone() %>" maxlength="10" required>
+                    <div class="form-hint">10 digits starting with 07</div>
+                    <div class="form-err" id="phoneErr"></div>
                 </div>
-
-                <!-- Email -->
                 <div class="form-group">
-                    <label>
-                        <i class="fas fa-envelope"></i> Email Address
-                        <span class="required">*</span>
-                    </label>
-                    <input type="email" id="email" name="email"
-                           value="<%= isAdd ? "" : student.getEmail() %>"
-                           placeholder="student@example.com"
-                           required>
-                    <div class="error-message" id="emailError"></div>
+                    <label class="form-label">Email <span>*</span></label>
+                    <input type="email" id="email" name="email" class="form-input" placeholder="student@example.com"
+                           value="<%= isAdd ? "" : student.getEmail() %>" required>
+                    <div class="form-err" id="emailErr"></div>
                 </div>
-
-                <!-- Address (Full Width) -->
-                <div class="form-group-full">
-                    <label>
-                        <i class="fas fa-map-marker-alt"></i> Residential Address
-                        <span class="required">*</span>
-                    </label>
-                    <textarea id="address" name="address" rows="3"
-                              placeholder="Enter full address" required><%= isAdd ? "" : student.getAddress() %></textarea>
-                    <div class="char-counter">
-                        <span id="charCount">0</span> characters
-                    </div>
-                </div>
-
-                <!-- Username (only for add) -->
-                <% if (isAdd) { %>
                 <div class="form-group">
-                    <label>
-                        <i class="fas fa-user-circle"></i> Username
-                        <span class="required">*</span>
-                    </label>
-                    <input type="text" id="username" name="username"
-                           placeholder="Username for login" required>
-                    <div class="hint">
-                        <i class="fas fa-info-circle"></i> Student uses this to login
-                    </div>
-                </div>
-                <% } %>
-
-                <!-- Password -->
-                <div class="form-group<%= isAdd ? "" : "-full" %>">
-                    <label>
-                        <i class="fas fa-lock"></i> Password
-                        <span class="required">*</span>
-                    </label>
-                    <input type="password" id="password" name="password"
-                           placeholder="<%= isAdd ? "Create a password (min 6 characters)" : "Leave blank to keep current password" %>"
-                        <%= isAdd ? "required" : "" %>>
-                    <div class="error-message" id="passwordError"></div>
-                    <div class="hint">
-                        <i class="fas fa-info-circle"></i> Minimum 6 characters, at least one number and one letter
-                    </div>
-                </div>
-
-                <!-- Gender -->
-                <div class="form-group">
-                    <label>
-                        <i class="fas fa-venus-mars"></i> Gender
-                        <span class="required">*</span>
-                    </label>
-                    <select id="gender" name="gender" required>
-                        <option value="">-- Select Gender --</option>
-                        <option value="Male" <%= !isAdd && "Male".equals(student.getGender()) ? "selected" : "" %>>Male</option>
+                    <label class="form-label">Gender <span>*</span></label>
+                    <select id="gender" name="gender" class="form-select" required>
+                        <option value="">— Select —</option>
+                        <option value="Male"   <%= !isAdd && "Male".equals(student.getGender())   ? "selected" : "" %>>Male</option>
                         <option value="Female" <%= !isAdd && "Female".equals(student.getGender()) ? "selected" : "" %>>Female</option>
                     </select>
                 </div>
-
-                <!-- Age -->
                 <div class="form-group">
-                    <label>
-                        <i class="fas fa-calendar-alt"></i> Age
-                        <span class="required">*</span>
-                    </label>
-                    <input type="number" id="age" name="age"
-                           value="<%= isAdd ? "" : student.getAge() %>"
-                           placeholder="Age"
-                           min="16" max="100" required>
-                    <div class="error-message" id="ageError"></div>
-                    <div class="hint">
-                        <i class="fas fa-info-circle"></i> Minimum 16 years for license eligibility
-                    </div>
+                    <label class="form-label">Age <span>*</span></label>
+                    <input type="number" id="age" name="age" class="form-input" placeholder="Age (min 16)"
+                           value="<%= isAdd ? "" : student.getAge() %>" min="16" max="100" required>
+                    <div class="form-err" id="ageErr"></div>
                 </div>
+                <div class="form-group full">
+                    <label class="form-label">Address <span>*</span></label>
+                    <textarea id="address" name="address" class="form-textarea" placeholder="Residential address" required><%= isAdd ? "" : student.getAddress() %></textarea>
+                </div>
+            </div>
 
-                <!-- License Type -->
+            <div class="section-title"><i class="fas fa-graduation-cap"></i> Course Details</div>
+            <div class="form-grid">
                 <div class="form-group">
-                    <label>
-                        <i class="fas fa-id-card"></i> License Type
-                        <span class="required">*</span>
-                    </label>
-                    <select id="licenseType" name="licenseType" required>
-                        <option value="">-- Select License Type --</option>
+                    <label class="form-label">License Type <span>*</span></label>
+                    <select name="licenseType" class="form-select" required>
+                        <option value="">— Select —</option>
                         <option value="Heavy Vehicle" <%= !isAdd && "Heavy Vehicle".equals(student.getLicenseType()) ? "selected" : "" %>>Heavy Vehicle</option>
                         <option value="Light Vehicle" <%= !isAdd && "Light Vehicle".equals(student.getLicenseType()) ? "selected" : "" %>>Light Vehicle</option>
                     </select>
                 </div>
-
-                <!-- Course Package -->
                 <div class="form-group">
-                    <label>
-                        <i class="fas fa-graduation-cap"></i> Course Package
-                        <span class="required">*</span>
-                    </label>
-                    <select id="coursePackage" name="coursePackage" required>
-                        <option value="">-- Select Course Package --</option>
-                        <option value="Basic" <%= !isAdd && "Basic".equals(student.getCoursePackage()) ? "selected" : "" %>>Basic - $299</option>
-                        <option value="Standard" <%= !isAdd && "Standard".equals(student.getCoursePackage()) ? "selected" : "" %>>Standard - $499</option>
-                        <option value="Premium" <%= !isAdd && "Premium".equals(student.getCoursePackage()) ? "selected" : "" %>>Premium - $799</option>
+                    <label class="form-label">Course Package <span>*</span></label>
+                    <select name="coursePackage" class="form-select" required>
+                        <option value="">— Select —</option>
+                        <option value="Basic"    <%= !isAdd && "Basic".equals(student.getCoursePackage())    ? "selected" : "" %>>Basic</option>
+                        <option value="Standard" <%= !isAdd && "Standard".equals(student.getCoursePackage()) ? "selected" : "" %>>Standard</option>
+                        <option value="Premium"  <%= !isAdd && "Premium".equals(student.getCoursePackage())  ? "selected" : "" %>>Premium</option>
                     </select>
                 </div>
-
-                <!-- Registration Date -->
                 <div class="form-group">
-                    <label>
-                        <i class="fas fa-calendar-plus"></i> Registration Date
-                        <span class="required">*</span>
-                    </label>
-                    <input type="date" id="regDate" name="registrationDate"
+                    <label class="form-label">Registration Date <span>*</span></label>
+                    <input type="date" id="regDate" name="registrationDate" class="form-input"
                            value="<%= isAdd ? "" : student.getRegistrationDate() %>" required>
-                    <div class="error-message" id="dateError"></div>
+                    <div class="form-err" id="dateErr"></div>
                 </div>
             </div>
 
-            <button type="submit" class="submit-btn">
-                <i class="fas fa-<%= isAdd ? "save" : "sync-alt" %>"></i>
-                <%= isAdd ? "Register Student" : "Update Information" %>
-            </button>
+            <div class="section-title"><i class="fas fa-key"></i> Login Credentials</div>
+            <div class="form-grid">
+                <% if (isAdd) { %>
+                <div class="form-group">
+                    <label class="form-label">Username <span>*</span></label>
+                    <input type="text" id="username" name="username" class="form-input" placeholder="Login username" required>
+                </div>
+                <% } %>
+                <div class="form-group">
+                    <label class="form-label">Password <span><%= isAdd ? "*" : "" %></span> <%= !isAdd ? "<small style='font-weight:400;text-transform:none'>(leave blank to keep)</small>" : "" %></label>
+                    <input type="password" id="password" name="password" class="form-input"
+                           placeholder="<%= isAdd ? "Min 6 characters" : "Leave blank to keep current" %>"
+                        <%= isAdd ? "required" : "" %>>
+                    <div class="form-err" id="passErr"></div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> <%= isAdd ? "Register Student" : "Update Student" %>
+                </button>
+                <a href="<%= ctx %>/students" class="btn btn-ghost"><i class="fas fa-times"></i> Cancel</a>
+            </div>
         </form>
     </div>
 </div>
 
 <script>
-    // Get DOM elements
-    const form = document.getElementById('studentForm');
-    const nameInput = document.getElementById('name');
-    const nicInput = document.getElementById('nic');
-    const phoneInput = document.getElementById('phone');
-    const emailInput = document.getElementById('email');
-    const addressInput = document.getElementById('address');
-    const passwordInput = document.getElementById('password');
-    const ageInput = document.getElementById('age');
-    const regDateInput = document.getElementById('regDate');
-
-    // Set max date for registration (no future dates)
-    const today = new Date().toISOString().split('T')[0];
-    regDateInput.max = today;
-
-    // Set default registration date to today for new students
-    <% if (isAdd && student == null) { %>
-    regDateInput.value = today;
-    <% } %>
-
-    // Character counter for address
-    if (addressInput) {
-        addressInput.addEventListener('input', function() {
-            const count = this.value.length;
-            document.getElementById('charCount').textContent = count;
+    (function(){
+        /* Theme toggle */
+        var h=document.documentElement,b=document.getElementById("themeBtn"),ic=document.getElementById("themeIcon");
+        var t=localStorage.getItem("dm-theme")||"dark";
+        h.setAttribute("data-theme",t);ic.className=t==="dark"?"fas fa-moon":"fas fa-sun";
+        b.addEventListener("click",function(){
+            var n=h.getAttribute("data-theme")==="dark"?"light":"dark";
+            h.setAttribute("data-theme",n);localStorage.setItem("dm-theme",n);
+            ic.className=n==="dark"?"fas fa-moon":"fas fa-sun";
         });
-        // Trigger initial count
-        addressInput.dispatchEvent(new Event('input'));
-    }
 
-    // NIC validation - restrict to 12 characters
-    nicInput.addEventListener('input', function(e) {
-        // Allow only digits and V/v
-        this.value = this.value.replace(/[^0-9Vv]/g, '');
+        /* Set today as max & default for reg date */
+        var today=new Date().toISOString().split("T")[0];
+        var rd=document.getElementById("regDate");
+        if(rd){rd.max=today; <% if(isAdd){%>rd.value=today;<% } %>}
 
-        // Limit to 12 characters
-        if (this.value.length > 12) {
-            this.value = this.value.slice(0, 12);
-        }
+        /* Helpers */
+        function showErr(id,msg){var e=document.getElementById(id);if(e){e.textContent=msg;e.style.display=msg?"block":"none";}}
+        function clearErr(id){showErr(id,"");}
 
-        // Validate format
-        validateNIC();
-    });
+        /* NIC */
+        var nic=document.getElementById("nic");
+        if(nic){nic.addEventListener("input",function(){this.value=this.value.replace(/[^0-9Vv]/g,"").slice(0,12);});
+            nic.addEventListener("blur",function(){var v=this.value;if(v&&!/^[0-9]{9}[Vv]$|^[0-9]{12}$/.test(v))showErr("nicErr","Invalid NIC format");else clearErr("nicErr");});}
 
-    nicInput.addEventListener('blur', validateNIC);
+        /* Phone */
+        var ph=document.getElementById("phone");
+        if(ph){ph.addEventListener("input",function(){this.value=this.value.replace(/\D/g,"").slice(0,10);});
+            ph.addEventListener("blur",function(){var v=this.value;if(v&&!/^07[0-9]{8}$/.test(v))showErr("phoneErr","Must be 10 digits starting with 07");else clearErr("phoneErr");});}
 
-    function validateNIC() {
-        const nic = nicInput.value;
-        const errorDiv = document.getElementById('nicError');
-        const nicPatternOld = /^[0-9]{9}[Vv]$/;
-        const nicPatternNew = /^[0-9]{12}$/;
+        /* Age */
+        var age=document.getElementById("age");
+        if(age)age.addEventListener("blur",function(){var v=parseInt(this.value);if(this.value&&(isNaN(v)||v<16||v>100))showErr("ageErr","Age must be between 16 and 100");else clearErr("ageErr");});
 
-        if (nic && !nicPatternOld.test(nic) && !nicPatternNew.test(nic)) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Invalid NIC format. Use 9 digits + V or 12 digits';
-            nicInput.classList.add('error');
-            return false;
-        } else {
-            errorDiv.innerHTML = '';
-            nicInput.classList.remove('error');
-            return true;
-        }
-    }
+        /* Email */
+        var em=document.getElementById("email");
+        if(em)em.addEventListener("blur",function(){var v=this.value;if(v&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))showErr("emailErr","Enter a valid email address");else clearErr("emailErr");});
 
-    // Phone validation - restrict to 10 digits, starts with 07
-    phoneInput.addEventListener('input', function(e) {
-        // Allow only digits
-        this.value = this.value.replace(/[^0-9]/g, '');
+        /* Name */
+        var nm=document.getElementById("name");
+        if(nm)nm.addEventListener("blur",function(){var v=this.value.trim();if(v&&v.length<3)showErr("nameErr","Name must be at least 3 characters");else clearErr("nameErr");});
 
-        // Limit to 10 digits
-        if (this.value.length > 10) {
-            this.value = this.value.slice(0, 10);
-        }
-
-        validatePhone();
-    });
-
-    phoneInput.addEventListener('blur', validatePhone);
-
-    function validatePhone() {
-        const phone = phoneInput.value;
-        const errorDiv = document.getElementById('phoneError');
-        const phonePattern = /^07[0-9]{8}$/;
-
-        if (phone && !phonePattern.test(phone)) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Phone must be 10 digits starting with 07';
-            phoneInput.classList.add('error');
-            return false;
-        } else if (phone && phone.length !== 10) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Phone must be exactly 10 digits';
-            phoneInput.classList.add('error');
-            return false;
-        } else {
-            errorDiv.innerHTML = '';
-            phoneInput.classList.remove('error');
-            return true;
-        }
-    }
-
-    // Email validation
-    emailInput.addEventListener('input', validateEmail);
-    emailInput.addEventListener('blur', validateEmail);
-
-    function validateEmail() {
-        const email = emailInput.value;
-        const errorDiv = document.getElementById('emailError');
-        const emailPattern = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
-
-        if (email && !emailPattern.test(email)) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Enter a valid email address (e.g., name@domain.com)';
-            emailInput.classList.add('error');
-            return false;
-        } else {
-            errorDiv.innerHTML = '';
-            emailInput.classList.remove('error');
-            return true;
-        }
-    }
-
-    // Age validation
-    ageInput.addEventListener('input', validateAge);
-    ageInput.addEventListener('blur', validateAge);
-
-    function validateAge() {
-        const age = parseInt(ageInput.value);
-        const errorDiv = document.getElementById('ageError');
-
-        if (ageInput.value && (isNaN(age) || age < 16 || age > 100)) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Age must be between 16 and 100';
-            ageInput.classList.add('error');
-            return false;
-        } else {
-            errorDiv.innerHTML = '';
-            ageInput.classList.remove('error');
-            return true;
-        }
-    }
-
-    // Password validation
-    if (passwordInput) {
-        passwordInput.addEventListener('input', validatePassword);
-        passwordInput.addEventListener('blur', validatePassword);
-    }
-
-    function validatePassword() {
-        const password = passwordInput.value;
-        const errorDiv = document.getElementById('passwordError');
-
-        <% if (isAdd) { %>
-        if (password && password.length < 6) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Password must be at least 6 characters';
-            passwordInput.classList.add('error');
-            return false;
-        } else if (password && !/(?=.*[A-Za-z])(?=.*\d)/.test(password)) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Password must contain at least one letter and one number';
-            passwordInput.classList.add('error');
-            return false;
-        } else {
-            errorDiv.innerHTML = '';
-            passwordInput.classList.remove('error');
-            return true;
-        }
-        <% } else { %>
-        // For edit, password is optional
-        if (password && password.length > 0 && password.length < 6) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Password must be at least 6 characters';
-            passwordInput.classList.add('error');
-            return false;
-        } else if (password && password.length > 0 && !/(?=.*[A-Za-z])(?=.*\d)/.test(password)) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Password must contain at least one letter and one number';
-            passwordInput.classList.add('error');
-            return false;
-        } else {
-            errorDiv.innerHTML = '';
-            passwordInput.classList.remove('error');
-            return true;
-        }
-        <% } %>
-    }
-
-    // Name validation
-    nameInput.addEventListener('input', validateName);
-    nameInput.addEventListener('blur', validateName);
-
-    function validateName() {
-        const name = nameInput.value;
-        const errorDiv = document.getElementById('nameError');
-
-        if (name && name.trim().length < 3) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Name must be at least 3 characters';
-            nameInput.classList.add('error');
-            return false;
-        } else if (name && !/^[A-Za-z\s]+$/.test(name)) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Name can only contain letters and spaces';
-            nameInput.classList.add('error');
-            return false;
-        } else {
-            errorDiv.innerHTML = '';
-            nameInput.classList.remove('error');
-            return true;
-        }
-    }
-
-    // Registration date validation
-    regDateInput.addEventListener('change', validateDate);
-
-    function validateDate() {
-        const selectedDate = regDateInput.value;
-        const errorDiv = document.getElementById('dateError');
-
-        if (selectedDate > today) {
-            errorDiv.innerHTML = '<i class="fas fa-times-circle"></i> Registration date cannot be in the future';
-            regDateInput.classList.add('error');
-            return false;
-        } else {
-            errorDiv.innerHTML = '';
-            regDateInput.classList.remove('error');
-            return true;
-        }
-    }
-
-    // Form submission validation
-    form.addEventListener('submit', function(e) {
-        // Run all validations
-        const isNameValid = validateName();
-        const isNICValid = validateNIC();
-        const isPhoneValid = validatePhone();
-        const isEmailValid = validateEmail();
-        const isAgeValid = validateAge();
-        const isPasswordValid = validatePassword();
-        const isDateValid = validateDate();
-
-        // Check if all validations pass
-        if (!isNameValid || !isNICValid || !isPhoneValid || !isEmailValid ||
-            !isAgeValid || !isPasswordValid || !isDateValid) {
-            e.preventDefault();
-
-            // Scroll to first error
-            const firstError = document.querySelector('.error');
-            if (firstError) {
-                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-
-            // Show alert
-            const alertDiv = document.createElement('div');
-            alertDiv.className = 'alert alert-error';
-            alertDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i><span>Please fix the errors before submitting.</span>';
-            form.insertBefore(alertDiv, form.firstChild);
-
-            setTimeout(() => {
-                alertDiv.remove();
-            }, 3000);
-
-            return false;
-        }
-
-        return true;
-    });
-
-    // Real-time validation for all fields
-    document.querySelectorAll('input, select, textarea').forEach(field => {
-        field.addEventListener('input', function() {
-            this.classList.remove('error');
-            const errorDiv = this.parentElement.querySelector('.error-message');
-            if (errorDiv) errorDiv.innerHTML = '';
-        });
-    });
+        /* Date */
+        if(rd)rd.addEventListener("change",function(){if(this.value>today)showErr("dateErr","Cannot be a future date");else clearErr("dateErr");});
+    })();
 </script>
-
 </body>
 </html>

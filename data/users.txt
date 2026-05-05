@@ -1,2 +1,6 @@
 U001,admin,admin@school.com,admin123,admin
-U005,sahan,sahan@gmail.com,sa1234,student,deleted
+U002,sahan,sahan@gmail.com,sa1234,student,active
+U003,himas,himas@gmail.com,hi1234,instructor,active
+U004,sajeer,sa@gmail.com,sa1234,student,active
+U005,sarfi,saaaa@gmail.com,sa1234,instructor,active
+U006,afnan,alhar@gmail.com,af1234,student,deleted

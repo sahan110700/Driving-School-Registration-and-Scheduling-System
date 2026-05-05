@@ -60,7 +60,6 @@ public class InstructorDAO {
             if (i.getInstructorId().equals(instructorId)) {
                 i.setStatus("INACTIVE");
                 if (saveAllInstructors(instructors)) {
-                    // Block login by marking user deleted in users.txt using their email
                     new UserDAO().markUserDeletedByEmail(instructor.getEmail());
                     System.out.println("[InstructorDAO] Deactivated + blocked login for: " + instructor.getEmail());
                     return true;
@@ -90,6 +89,23 @@ public class InstructorDAO {
     public Instructor getInstructorById(String instructorId) {
         return getAllInstructors().stream()
                 .filter(i -> i.getInstructorId().equals(instructorId))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public Instructor getInstructorByEmail(String email) {
+        if (email == null || email.trim().isEmpty()) return null;
+        return getAllInstructors().stream()
+                .filter(i -> i.getEmail().equalsIgnoreCase(email.trim()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    // FIX: username வச்சு find பண்ண - loggedInUser="sarfi" → name="sarfi" → INS002
+    public Instructor getInstructorByUsername(String username) {
+        if (username == null || username.trim().isEmpty()) return null;
+        return getAllInstructors().stream()
+                .filter(i -> i.getName().equalsIgnoreCase(username.trim()))
                 .findFirst()
                 .orElse(null);
     }

@@ -8,7 +8,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class PaymentDAO {
-    private final String filePath = "payments.txt";
+    private static final String filePath = "C:/Users/DELL/OneDrive/Desktop/DrivingSchoolSystem-main/data/payments.txt";
     private StudentDAO studentDAO = new StudentDAO();
 
     // Generate next payment ID (P001, P002)

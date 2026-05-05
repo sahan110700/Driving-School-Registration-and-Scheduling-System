@@ -11,6 +11,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -28,15 +29,36 @@ public class TestServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
 
-        // Check authentication
-        if (req.getSession(false) == null || req.getSession(false).getAttribute("loggedInUser") == null) {
+        HttpSession session = req.getSession(false);
+        if (session == null || session.getAttribute("loggedInUser") == null) {
             resp.sendRedirect(req.getContextPath() + "/jsp/login.jsp");
             return;
         }
 
+        Object roleObj = session.getAttribute("userRole");
+        String userRole = (roleObj != null) ? roleObj.toString() : "student";
+        boolean isAdmin = "admin".equalsIgnoreCase(userRole);
+        boolean isInstructor = "instructor".equalsIgnoreCase(userRole);
+
         String action = req.getParameter("action");
 
-        // Handle cancel
+        // Instructor: results மட்டும் allow, student: எதுவும் கூடாது
+        if (!isAdmin && !isInstructor && (
+                "cancel".equals(action) ||
+                        "results".equals(action) ||
+                        "edit".equals(action) ||
+                        "add-form".equals(action))) {
+            resp.sendRedirect(req.getContextPath() + "/home");
+            return;
+        }
+        if (isInstructor && (
+                "cancel".equals(action) ||
+                        "edit".equals(action) ||
+                        "add-form".equals(action))) {
+            resp.sendRedirect(req.getContextPath() + "/home");
+            return;
+        }
+
         if ("cancel".equals(action)) {
             String testId = req.getParameter("id");
             if (testId != null && testDAO.cancelTest(testId)) {
@@ -47,7 +69,6 @@ public class TestServlet extends HttpServlet {
             return;
         }
 
-        // Handle results form
         if ("results".equals(action)) {
             String testId = req.getParameter("id");
             Test test = testDAO.getTestById(testId);
@@ -56,7 +77,6 @@ public class TestServlet extends HttpServlet {
             return;
         }
 
-        // Handle edit form
         if ("edit".equals(action)) {
             String testId = req.getParameter("id");
             Test test = testDAO.getTestById(testId);
@@ -67,7 +87,6 @@ public class TestServlet extends HttpServlet {
             return;
         }
 
-        // Handle add form
         if ("add-form".equals(action)) {
             req.setAttribute("test", null);
             req.setAttribute("students", studentDAO.getAllActiveStudents());
@@ -76,40 +95,73 @@ public class TestServlet extends HttpServlet {
             return;
         }
 
-        // Handle calendar view
         String view = req.getParameter("view");
         if ("calendar".equals(view)) {
-            int year = LocalDate.now().getYear();
+            // FIX: Instructor-um calendar paarkkalam, admin மட்டும் இல்லை
+            if (!isAdmin && !isInstructor) {
+                resp.sendRedirect(req.getContextPath() + "/tests");
+                return;
+            }
+
+            int year  = LocalDate.now().getYear();
             int month = LocalDate.now().getMonthValue();
 
-            String yearParam = req.getParameter("year");
+            String yearParam  = req.getParameter("year");
             String monthParam = req.getParameter("month");
+            if (yearParam  != null && !yearParam.isEmpty())  year  = Integer.parseInt(yearParam);
+            if (monthParam != null && !monthParam.isEmpty()) month = Integer.parseInt(monthParam);
 
-            if (yearParam != null) year = Integer.parseInt(yearParam);
-            if (monthParam != null) month = Integer.parseInt(monthParam);
+            Map<String, List<Test>> calendarData;
 
-            Map<String, List<Test>> calendarData = testDAO.getTestsForMonth(year, month);
-            req.setAttribute("calendarData", calendarData);
-            req.setAttribute("currentYear", year);
-            req.setAttribute("currentMonth", month);
+            if (isAdmin) {
+                // Admin: எல்லா tests-உம் காட்டு
+                calendarData = testDAO.getTestsForMonth(year, month);
+            } else {
+                // Instructor: அவங்களோட tests மட்டும்
+                // loggedInUser = email, அதை வச்சு instructorId find பண்றோம்
+                String username = (String) session.getAttribute("loggedInUser");
+                Instructor instructor = instructorDAO.getInstructorByUsername(username);
+                String instructorId = (instructor != null) ? instructor.getInstructorId() : "";
+                calendarData = testDAO.getTestsForMonthByExaminer(year, month, instructorId);
+            }
+
+            req.setAttribute("calendarData",  calendarData);
+            req.setAttribute("currentYear",   year);
+            req.setAttribute("currentMonth",  month);
+            req.setAttribute("isAdmin",       isAdmin);
             req.getRequestDispatcher("/jsp/test-calendar.jsp").forward(req, resp);
             return;
         }
 
-        // Default list view
         String date = req.getParameter("date");
-        if (date == null || date.isEmpty()) {
-            date = LocalDate.now().toString();
-        }
+        if (date == null || date.isEmpty()) date = LocalDate.now().toString();
 
-        List<Test> upcomingTests = testDAO.getUpcomingTests();
-        List<Test> testsByDate = testDAO.getTestsByDate(date);
+        String loggedInUser = (String) session.getAttribute("loggedInUser");
+
+        List<Test> upcomingTests;
+        List<Test> testsByDate;
         Map<String, Object> statistics = testDAO.getTestStatistics();
 
+        if (isAdmin) {
+            // Admin: எல்லா tests - Completed உட்பட எல்லாமே காட்டு
+            upcomingTests = testDAO.getAllTestsSorted();
+            testsByDate   = testDAO.getTestsByDate(date);
+        } else if (isInstructor) {
+            // Instructor: username=examinerName match - எல்லா tests (completed உட்பட)
+            Instructor instr = instructorDAO.getInstructorByUsername(loggedInUser);
+            String instrId = (instr != null) ? instr.getInstructorId() : "";
+            upcomingTests = testDAO.getTestsByExaminer(instrId);
+            testsByDate   = testDAO.getTestsByExaminerAndDate(instrId, date);
+        } else {
+            // Student: studentName match - எல்லா tests (completed உட்பட)
+            upcomingTests = testDAO.getTestsByStudentName(loggedInUser);
+            testsByDate   = testDAO.getTestsByStudentNameAndDate(loggedInUser, date);
+        }
+
         req.setAttribute("upcomingTests", upcomingTests);
-        req.setAttribute("testsByDate", testsByDate);
-        req.setAttribute("selectedDate", date);
-        req.setAttribute("statistics", statistics);
+        req.setAttribute("testsByDate",   testsByDate);
+        req.setAttribute("selectedDate",  date);
+        req.setAttribute("statistics",    statistics);
         req.getRequestDispatcher("/jsp/tests.jsp").forward(req, resp);
     }
 
@@ -117,29 +169,50 @@ public class TestServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
 
-        // Check authentication
-        if (req.getSession(false) == null || req.getSession(false).getAttribute("loggedInUser") == null) {
+        HttpSession session = req.getSession(false);
+        if (session == null || session.getAttribute("loggedInUser") == null) {
             resp.sendRedirect(req.getContextPath() + "/jsp/login.jsp");
             return;
         }
 
-        req.setCharacterEncoding("UTF-8");
+        Object roleObj = session.getAttribute("userRole");
+        String userRole = (roleObj != null) ? roleObj.toString() : "student";
+        boolean isAdminPost = "admin".equalsIgnoreCase(userRole);
+        boolean isInstructorPost = "instructor".equalsIgnoreCase(userRole);
 
+        // Student: எதுவும் POST கூடாது
+        if (!isAdminPost && !isInstructorPost) {
+            resp.sendRedirect(req.getContextPath() + "/home");
+            return;
+        }
+
+        req.setCharacterEncoding("UTF-8");
         String action = req.getParameter("action");
 
-        // Handle results submission
-        if ("results".equals(action)) {
-            String testId = req.getParameter("testId");
-            String scoreStr = req.getParameter("score");
-            String notes = req.getParameter("notes");
-            String result = req.getParameter("result"); // "Pass" or "Fail"
+        // Instructor: results மட்டும் submit பண்ணலாம்
+        if (isInstructorPost && !"results".equals(action)) {
+            resp.sendRedirect(req.getContextPath() + "/home");
+            return;
+        }
 
-            if (testId == null || result == null || (!result.equals("Pass") && !result.equals("Fail"))) {
+        // Admin: results submit கூடாது - instructor மட்டும்
+        if (isAdminPost && "results".equals(action)) {
+            resp.sendRedirect(req.getContextPath() + "/tests?error=notAllowed");
+            return;
+        }
+
+        if ("results".equals(action)) {
+            String testId   = req.getParameter("testId");
+            String scoreStr = req.getParameter("score");
+            String notes    = req.getParameter("notes");
+            String result   = req.getParameter("result");
+
+            if (testId == null || result == null ||
+                    (!result.equals("Pass") && !result.equals("Fail"))) {
                 resp.sendRedirect(req.getContextPath() + "/tests?error=invalidData");
                 return;
             }
 
-            // Score is optional; default to 0 if not provided
             int score = 0;
             if (scoreStr != null && !scoreStr.trim().isEmpty()) {
                 try {
@@ -159,48 +232,43 @@ public class TestServlet extends HttpServlet {
             return;
         }
 
-        // Handle add/update test
-        String studentId = req.getParameter("studentId");
-        String testType = req.getParameter("testType");
-        String testDate = req.getParameter("testDate");
-        String testTime = req.getParameter("testTime");
+        String studentId  = req.getParameter("studentId");
+        String testType   = req.getParameter("testType");
+        String testDate   = req.getParameter("testDate");
+        String testTime   = req.getParameter("testTime");
         String examinerId = req.getParameter("examinerId");
-        String notes = req.getParameter("notes");
+        String notes      = req.getParameter("notes");
 
-        // Validate required fields
         if (studentId == null || studentId.isEmpty() ||
                 testType == null || testType.isEmpty() ||
                 testDate == null || testDate.isEmpty() ||
                 testTime == null || testTime.isEmpty() ||
                 examinerId == null || examinerId.isEmpty()) {
 
-            String redirect = ("update".equals(action)) ?
+            String redirect = "update".equals(action) ?
                     "/tests?action=edit&id=" + req.getParameter("testId") + "&error=empty" :
                     "/tests?action=add-form&error=empty";
             resp.sendRedirect(req.getContextPath() + redirect);
             return;
         }
 
-        // Validate test time (8am-5pm)
         if (!testDAO.isValidTestTime(testTime)) {
-            String redirect = ("update".equals(action)) ?
+            String redirect = "update".equals(action) ?
                     "/tests?action=edit&id=" + req.getParameter("testId") + "&error=invalidTime" :
                     "/tests?action=add-form&error=invalidTime";
             resp.sendRedirect(req.getContextPath() + redirect);
             return;
         }
 
-        // Validate test date (cannot be past)
         if (testDate.compareTo(LocalDate.now().toString()) < 0) {
-            String redirect = ("update".equals(action)) ?
+            String redirect = "update".equals(action) ?
                     "/tests?action=edit&id=" + req.getParameter("testId") + "&error=pastDate" :
                     "/tests?action=add-form&error=pastDate";
             resp.sendRedirect(req.getContextPath() + redirect);
             return;
         }
 
-        // Get details
-        Student student = studentDAO.getStudentById(studentId);
+        Student student     = studentDAO.getStudentById(studentId);
         Instructor examiner = instructorDAO.getInstructorById(examinerId);
 
         if (student == null || examiner == null) {
@@ -208,16 +276,13 @@ public class TestServlet extends HttpServlet {
             return;
         }
 
-        // Handle update
         if ("update".equals(action)) {
             String testId = req.getParameter("testId");
-
             Test existingTest = testDAO.getTestById(testId);
             if (existingTest == null) {
                 resp.sendRedirect(req.getContextPath() + "/tests?error=notFound");
                 return;
             }
-
             Test test = new Test(
                     testId, studentId, student.getName(),
                     testType, testDate, testTime,
@@ -225,7 +290,6 @@ public class TestServlet extends HttpServlet {
                     0, "Pending", "Scheduled",
                     existingTest.getScheduledDate(), notes
             );
-
             if (testDAO.updateTest(test)) {
                 resp.sendRedirect(req.getContextPath() + "/tests?success=updated");
             } else {
@@ -234,11 +298,9 @@ public class TestServlet extends HttpServlet {
             return;
         }
 
-        // Handle add
         if ("add".equals(action)) {
-            String testId = testDAO.generateNextTestId();
+            String testId        = testDAO.generateNextTestId();
             String scheduledDate = LocalDate.now().toString();
-
             Test test = new Test(
                     testId, studentId, student.getName(),
                     testType, testDate, testTime,
@@ -246,7 +308,6 @@ public class TestServlet extends HttpServlet {
                     0, "Pending", "Scheduled",
                     scheduledDate, notes
             );
-
             if (testDAO.addTest(test)) {
                 resp.sendRedirect(req.getContextPath() + "/tests?success=added");
             } else {

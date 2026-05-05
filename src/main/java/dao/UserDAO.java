@@ -83,6 +83,28 @@ public class UserDAO {
         return false;
     }
 
+    // Overload: register with explicit role (use this for instructors)
+    public boolean registerUser(String username, String email, String password, String role) {
+        Path path = getFilePath();
+        try {
+            if (!Files.exists(path)) {
+                Files.createDirectories(path.getParent());
+                Files.createFile(path);
+            }
+            String userId = generateNextUserId();
+            String record = userId + "," + username + "," + email + "," + password + "," + role + ",active";
+            try (BufferedWriter writer = Files.newBufferedWriter(
+                    path, StandardOpenOption.APPEND, StandardOpenOption.CREATE)) {
+                writer.write(record);
+                writer.write("\r\n");
+            }
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public boolean registerUser(String username, String email, String password) {
         Path path = getFilePath();
 

@@ -36,7 +36,19 @@ public class LessonServlet extends HttpServlet {
             return;
         }
 
+        // Get role for access control
+        Object roleObj = req.getSession(false).getAttribute("userRole");
+        String userRole = (roleObj != null) ? roleObj.toString() : "student";
+        boolean isAdmin = "admin".equalsIgnoreCase(userRole);
+
         String action = req.getParameter("action");
+
+        // ADMIN ONLY: cancel, complete, reschedule, add-form
+        if (("cancel".equals(action) || "complete".equals(action) ||
+                "reschedule".equals(action) || "add-form".equals(action)) && !isAdmin) {
+            resp.sendRedirect(req.getContextPath() + "/home");
+            return;
+        }
 
         // Handle cancel
         if ("cancel".equals(action)) {
@@ -87,6 +99,26 @@ public class LessonServlet extends HttpServlet {
         req.setAttribute("instructors", instructorDAO.getAllActiveInstructors());
         req.setAttribute("vehicles", vehicleDAO.getAllActiveVehicles());
 
+        // Pass logged-in username and role so JSP can filter correctly
+        String loggedInUser = String.valueOf(req.getSession(false).getAttribute("loggedInUser"));
+        req.setAttribute("loggedInUser", loggedInUser);
+        req.setAttribute("userRoleAttr", userRole);
+
+        // For instructor: resolve their display name from the instructors list
+        String resolvedInstructorName = null;
+        if ("instructor".equalsIgnoreCase(userRole)) {
+            List<Instructor> allIns = instructorDAO.getAllActiveInstructors();
+            for (Instructor ins : allIns) {
+                if (loggedInUser.equalsIgnoreCase(ins.getEmail()) ||
+                        loggedInUser.equalsIgnoreCase(ins.getName())) {
+                    resolvedInstructorName = ins.getName();
+                    break;
+                }
+            }
+            if (resolvedInstructorName == null) resolvedInstructorName = loggedInUser;
+        }
+        req.setAttribute("resolvedInstructorName", resolvedInstructorName);
+
         // Get lessons
         String date = req.getParameter("date");
         if (date == null || date.isEmpty()) {
@@ -109,6 +141,14 @@ public class LessonServlet extends HttpServlet {
         // Check authentication
         if (req.getSession(false) == null || req.getSession(false).getAttribute("loggedInUser") == null) {
             resp.sendRedirect(req.getContextPath() + "/jsp/login.jsp");
+            return;
+        }
+
+        // ADMIN ONLY: block students from posting
+        Object roleObj2 = req.getSession(false).getAttribute("userRole");
+        String userRole2 = (roleObj2 != null) ? roleObj2.toString() : "student";
+        if (!"admin".equalsIgnoreCase(userRole2)) {
+            resp.sendRedirect(req.getContextPath() + "/home");
             return;
         }
 
